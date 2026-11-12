@@ -815,7 +815,8 @@ const NSIM=100000;
 async function nbaRoster(tid){if(ROSTER[tid])return ROSTER[tid];const d=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${tid}/roster`);return ROSTER[tid]=(d&&d.athletes)||[];}
 function gp(rec){if(!rec)return 0;return String(rec).split('-').reduce((s,x)=>s+(parseInt(x)||0),0);}
 function numIn(s,re){const m=String(s||'').replace(/,/g,'').match(re);return m?+m[1]:0;}
-function fitLam(pH,pD,pA){let best=[1.45,1.15],be=1e9;for(let lh=.2;lh<=4.01;lh+=.05)for(let la=.2;la<=4.01;la+=.05){const r=poisRes(lh,la),e=(r[0]-pH)**2+(r[1]-pD)**2+(r[2]-pA)**2;if(e<be){be=e;best=[lh,la];}}return best;}
+function pOverPois(l,t){let p=Math.exp(-l),c=0;for(let k=0;k<=Math.floor(t);k++){c+=p;p*=l/(k+1);}return 1-c;}
+function fitLam(pH,pD,pA,tot,pO){let best=[1.45,1.15],be=1e9;for(let lh=.2;lh<=4.01;lh+=.05)for(let la=.2;la<=4.01;la+=.05){const r=poisRes(lh,la);let e=(r[0]-pH)**2+(r[1]-pD)**2+(r[2]-pA)**2;if(tot!=null&&pO!=null)e+=(pOverPois(lh+la,tot)-pO)**2;if(e<be){be=e;best=[lh,la];}}return best;}
 function poisRes(lh,la){const ph=[],pa=[];let fh=Math.exp(-lh),fa=Math.exp(-la);for(let k=0;k<11;k++){ph.push(fh);pa.push(fa);fh*=lh/(k+1);fa*=la/(k+1);}let H=0,D=0,A=0;for(let i=0;i<11;i++)for(let j=0;j<11;j++){const p=ph[i]*pa[j];if(i>j)H+=p;else if(i===j)D+=p;else A+=p;}return [H,D,A];}
 function soccerMinute(X,info){const m=String(X.clock||info||'').match(/(\d+)'/);let mi=m?+m[1]:0;if(/half/i.test(info))mi=45;return clamp(mi,0,90);}
 function histQ(h,q){let t=0;for(const c of h)t+=c;let acc=0;for(let i=0;i<h.length;i++){acc+=h[i];if(acc>=q*t)return i;}return h.length-1;}
@@ -876,7 +877,10 @@ async function buildCtx(g,sum){
  ctx.spread=spread;ctx.total=total;
  if(soc){
   let lh=1.45,la=1.15;
-  if(pr&&pr.length===3){[lh,la]=fitLam(pr[1]/100,pr[2]/100,pr[0]/100);ctx.notes.push('Goal rates fitted to the DraftKings 1X2 odds.');}
+  const dk0=ctx.dk;let pO=null;if(dk0&&dk0.tot!=null){const io=impl(dk0.ovOdds),iu=impl(dk0.unOdds);if(io&&iu)pO=io/(io+iu);}
+  let p3=pr&&pr.length===3?[pr[1]/100,pr[2]/100,pr[0]/100]:null;
+  if(dk0&&dk0.mlH!=null&&dk0.mlD!=null&&dk0.mlA!=null){const a1=impl(dk0.mlH),d1=impl(dk0.mlD),b1=impl(dk0.mlA),t=a1+d1+b1;p3=[a1/t,d1/t,b1/t];}
+  if(p3){[lh,la]=fitLam(p3[0],p3[1],p3[2],dk0?dk0.tot:null,pO);ctx.notes.push('Goal rates are fitted to the DraftKings win/draw/win and total odds, so moneyline edges will be small; the value is in exact scores, both-teams-score, team goals and scorers.');}
   else if(sum&&sum.odds){/* keep defaults */}
   const mi=st==='live'?soccerMinute(X,info):0;ctx.f=(90-mi)/90;ctx.lamH=lh;ctx.lamA=la;ctx.minute=mi;
   if(sum&&sum.leaders)for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
@@ -974,7 +978,8 @@ function renderMatch(ctx,R){
    rows.push(...pairRows(soc?'Handicap':'Spread',`${a} ${-dk.spH>0?'+':''}${-dk.spH}`,`${h} ${dk.spH>0?'+':''}${dk.spH}`,dk.spOddsA,dk.spOddsH,ac/n,c/n,pu/n,bl));}
   if(dk.tot!=null){let o=0,u=0,pu=0;for(let i=0;i<n;i++){const v=H[i]+A[i];if(v>dk.tot)o++;else if(v<dk.tot)u++;else pu++;}
    rows.push(...pairRows(soc?'Total goals':'Total',`Over ${dk.tot}`,`Under ${dk.tot}`,dk.ovOdds,dk.unOdds,o/n,u/n,pu/n,bl));}
-  if(rows.length)dkHTML=`<div class="card msec"><h3>${dk.prov} lines${ctx.st==='live'?' (pregame — live prices differ)':''}</h3>${ctx.st==='live'?'<div class="hint" style="margin:0 0 10px">These are the lines DraftKings posted before the game. For live bets, use “Compare with my sportsbook odds” below with the current prices.</div>':''}${topHTML(rows)}${tableHTML(rows)}<div class="hint" style="margin:0">Model = share of the ${NSIM.toLocaleString()} simulations where the bet wins (pushes removed). Final blends the model with the DraftKings price using the Trust market slider.</div></div>`;
+  if(ctx.st==='live')for(const r of rows){r.ev=null;r.k=0;r.nv=null;r.p=r.c;r.odds=0;}
+  if(rows.length)dkHTML=`<div class="card msec"><h3>${dk.prov} lines${ctx.st==='live'?' (pregame lines, live chances)':''}</h3>${ctx.st==='live'?'<div class="hint" style="margin:0 0 10px">The game has started, so DraftKings’ pregame prices can’t be bet. This shows the live chance of each pregame line hitting. For live bets, tap “Compare with my sportsbook odds” and enter the current prices.</div>':topHTML(rows)}${tableHTML(rows)}<div class="hint" style="margin:0">Model = share of the ${NSIM.toLocaleString()} simulations where the bet wins (pushes removed). Final blends the model with the DraftKings price using the Trust market slider.</div></div>`;
  }
  const T=(title,head,rows)=>`<div class="card msec"><h3>${title}</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
  const secs=[];
