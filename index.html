@@ -1482,7 +1482,7 @@ function renderAlt(ctx,R){
 
 /* ---------- highlights for finished games (ESPN clips + YouTube search) ---------- */
 function hlHTML(g,sum){const [lg,st,a,h]=g,X=g[10]||{};
- const vids=((sum&&sum.videos)||[]).map(v=>{const L=v.links||{},S=L.source||{};return {t:v.headline||'',th:v.thumbnail||'',mp4:(S.HD&&S.HD.href)||S.href||'',web:(L.web&&L.web.href)||'',dur:v.duration||0};}).filter(v=>v.mp4||v.web);
+ const vids=((sum&&sum.videos)||[]).map(v=>{const L=v.links||{},S=L.source||{};return {t:v.headline||'',th:v.thumbnail||'',mp4:(S.HD&&S.HD.href)||S.href||'',web:(L.web&&L.web.href)||'',dur:v.duration||0};}).filter(v=>v.mp4||v.web).sort((x,y)=>(/highlights|recap/i.test(y.t)?1:0)-(/highlights|recap/i.test(x.t)?1:0));
  window._HL=vids;
  const d=X.date?new Date(X.date):null,q=encodeURIComponent(`${a} vs ${h} highlights ${d?d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):''}`);
  const yt=`<a class="btn ghost" style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener"><span style="background:#ff0033;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px">▶</span> Watch on YouTube</a>`;
