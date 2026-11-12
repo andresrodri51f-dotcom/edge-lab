@@ -147,7 +147,7 @@ table.mt td{vertical-align:middle}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
 .catbar{position:sticky;top:0;z-index:20;margin:0 0 16px;padding:6px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.cats{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cats{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
 .cat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--mut);font:700 13px var(--body);padding:10px 4px;border-radius:13px;cursor:pointer;min-width:0;transition:background .15s,color .15s}
 .cat .ci{font-size:22px;line-height:1}
 .cat:hover{color:var(--ink);background:var(--surface2)}
@@ -670,8 +670,8 @@ function runLive(){
 }
 
 const CLUBS=['UCL','EPL','La Liga','Serie A','Bundesliga','Ligue 1','MLS'],INTL=['Friendlies','UEFA NL','CONCACAF NL','AFCON Qual.'],SOCCER=[...CLUBS,...INTL];
-const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga','Serie A':'Serie A',Bundesliga:'Bundesliga','Ligue 1':'Ligue 1',MLS:'MLS',Friendlies:'International Friendlies',MLB:'MLB',NHL:'NHL',Tennis:'Tennis (ATP & WTA)','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
-const LGORDER=['UCL','EPL','La Liga','Serie A','Bundesliga','Ligue 1','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
+const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga','Serie A':'Serie A',Bundesliga:'Bundesliga','Ligue 1':'Ligue 1',MLS:'MLS',Friendlies:'International Friendlies',MLB:'MLB',NHL:'NHL',Tennis:'Tennis (ATP & WTA)',UFC:'UFC','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
+const LGORDER=['UCL','EPL','La Liga','Serie A','Bundesliga','Ligue 1','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies','NBA','MLB','NFL','NHL','Tennis','UFC','EuroLeague'];
 const BIGCLUB=/Real Madrid|Barcelona|Man(chester)? City|Liverpool|Arsenal|Man(chester)? United|Man Utd|Chelsea|Paris Saint|PSG|Paris SG|Bayern|Juventus|^Inter$|Internazionale|Inter Milan|AC Milan|^Milan$|Atl[eé]tico|Dortmund|Napoli|Tottenham|Inter Miami/i;
 const BIGNAT=/^(Argentina|Brazil|France|England|Spain|Germany|Portugal|Italy|Netherlands|Belgium|Croatia|United States|USA|Mexico|Uruguay|Colombia)$/i;
 function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
@@ -683,7 +683,7 @@ function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
  if(INTL.includes(lg)){const na=BIGNAT.test(a),nh=BIGNAT.test(h);if(na&&nh)return 'Top nations';if((na||nh)&&lg!=='Friendlies')return 'Top nation';return '';}
  return '';}
 function inSport(g,s){return s==='All'||(s==='Special'?!!specialWhy(g):s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
-const CATS=['FC','NBA','MLB','NFL','NHL','Tennis'];
+const CATS=['FC','NBA','MLB','NFL','NHL','Tennis','UFC'];
 const LGLOGO={EPL:23,'La Liga':15,'Serie A':12,Bundesliga:10,'Ligue 1':9,UCL:2,MLS:19};
 const FCSUB=[['EPL','Premier League'],['La Liga','La Liga'],['Serie A','Serie A'],['Bundesliga','Bundesliga'],['Ligue 1','Ligue 1'],['INTL','International'],['UCL','Champions League'],['MLS','MLS']];let gFC='EPL';
 const SNAP=GAMES.list.slice();
@@ -705,7 +705,7 @@ function gameCard(g,idx){
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
  const line=X.ten?`<div class="gline">${X.setLine?'Sets: '+X.setLine:(X.tour||'')}</div>`:X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
- const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',EuroLeague:'basketball'}[lg]||'soccer');
+ const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',UFC:'ufc',EuroLeague:'basketball'}[lg]||'soccer');
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>${why&&gSport==='Special'?`<div class="hint" style="margin:-6px 0 6px;color:var(--warn)">★ ${why}</div>`:''}
@@ -715,7 +715,7 @@ function gameCard(g,idx){
   <div class="gfoot"><span class="gopen">${st==='final'?'See result':'Open simulations'} →</span><a href="${href}" onclick="event.stopPropagation()">Real ↗</a></div></div>`;
 }
 let gNext='All',gView='games';
-const CICON={All:'🏟️',FC:'⚽',NBA:'🏀',MLB:'⚾',NFL:'🏈',NHL:'🏒',Tennis:'🎾',Special:'⭐'};
+const CICON={All:'🏟️',FC:'⚽',NBA:'🏀',MLB:'⚾',NFL:'🏈',NHL:'🏒',Tennis:'🎾',UFC:'🥊',Special:'⭐'};
 function topBar(){const cur=gView==='next'?gNext:gSport;
  return `<div class="catbar"><div class="cats">${CATS.map(s=>`<button class="cat${cur===s?' on':''}" onclick="${gView==='next'?`gNext='${s}'`:`gSport='${s}';gDate=null`};renderGames()"><span class="ci">${CICON[s]||''}</span><span>${s}</span></button>`).join('')}<button class="cat" onclick="openSearch()" aria-label="Search"><span class="ci">🔍</span><span>Search</span></button></div>
 </div>`;}
@@ -781,8 +781,9 @@ function ymdL(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+S
 async function fetchAhead(lg,p,full){
  const S=SOCD[lg]||(SOCD[lg]={days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
  const cur=await getJSON(base);if(cur)S.cur=cur;
- if(full&&(lg==='NBA'||lg==='NHL'||lg==='MLB')){const now=Date.now();await Promise.all([1,2,3].map(async d=>{const k=ymdL(new Date(now+d*864e5));const old=S.days[k];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+k);if(x)S.days[k]={t:now,events:x.events||[]};}));}
- const m=new Map();if(S.cur)for(const e of S.cur.events||[])m.set(e.id,e);for(const k of Object.keys(S.days))for(const e of S.days[k].events)if(!m.has(e.id))m.set(e.id,e);
+ if(lg==='NBA'||lg==='NHL'||lg==='MLB'){const now=Date.now(),tk=ymdL(new Date(now));const x0=await getJSON(base+'?dates='+tk);if(x0)S.days[tk]={t:now,events:x0.events||[]};
+  if(full)await Promise.all([-1,1,2,3].map(async d=>{const k=ymdL(new Date(now+d*864e5));const old=S.days[k];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+k);if(x)S.days[k]={t:now,events:x.events||[]};}));}
+ const m=new Map();for(const k of Object.keys(S.days))for(const e of S.days[k].events)m.set(e.id,e);const tk0=ymdL(new Date());if(S.cur)for(const e of S.cur.events||[])if(!m.has(e.id)||!(S.days[tk0]&&S.days[tk0].events.some(x=>x.id===e.id)))m.set(e.id,e);
  if(m.size)FCACHE[lg]={events:[...m.values()]};
 }
 async function fetchLeague(lg,p){try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d&&d.events)FCACHE[lg]=d;}catch(e){}}
@@ -827,14 +828,14 @@ function buildList(){
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
     {id:e.id,path:p,date:e.date,det,la:A.team.logo||'',lh:H.team.logo||'',natTV:((c.geoBroadcasts||[]).filter(b=>b.market&&b.market.type==='National'&&b.media&&!/League Pass|NBA TV|NHL Network|MLB Network|ESPN\+|NHL Power Play|Center Ice|Extra Innings/i.test(b.media.shortName||'')).map(b=>b.media.shortName)[0])||'',pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
- return list.concat(elList(),tennisList());
+ return list.concat(elList(),tennisList(),ufcList());
 }
 async function pullFeed(){
  if(busy)return !!lastOk;busy=true;
  const now=Date.now(),full=now-lastFull>60000||!Object.keys(FCACHE).length;
  const liveLg=new Set(GAMES.list.filter(g=>g[1]==='live').map(g=>g[0]));
  const todo=FEEDS.filter(([lg])=>full||liveLg.has(lg));
- await Promise.all([(full||GAMES.list.some(g=>g[0]==='Tennis'&&g[1]==='live'))?fetchTennis(full):null,fetchEL(full),...todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full))]);
+ await Promise.all([(full||GAMES.list.some(g=>g[0]==='Tennis'&&g[1]==='live'))?fetchTennis(full):null,(full||GAMES.list.some(g=>g[0]==='UFC'&&g[1]==='live'))?fetchUFC():null,fetchEL(full),...todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full))]);
  if(full&&Object.keys(FCACHE).length)lastFull=now;
  busy=false;
  if(!Object.keys(FCACHE).length){setFeed(false,'Snapshot');return false;}
@@ -976,6 +977,7 @@ async function openMatch(idx){
  MATCH.sum=sum;
  if(!SOCCER.includes(lg)&&!ALT.includes(lg)&&st!=='final'){try{MATCH.props=await fetchProps(X);}catch(e){MATCH.props=null;}}
  try{
+  if(lg==='UFC')return ufcOpen(g,idx);
   if(ALT.includes(lg)&&st!=='final'){const ctx=altCtx(g);setTimeout(()=>{const R=altSim(ctx);if(MATCH&&MATCH.idx===idx)renderAlt(ctx,R);clearTimeout(MATCH.t);if(st==='live')MATCH.t=setTimeout(()=>{if(MATCH)openKey(encodeURIComponent(lg+'|'+a+'|'+h));},15000);},20);return;}
   if(st==='final')return renderFinal(sum);
   const ctx=await buildCtx(g,sum);
@@ -1271,12 +1273,12 @@ async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
 
 /* ---------- NHL, MLB and tennis: simulation + match page ---------- */
-const ALT=['NHL','MLB','Tennis'];
+const ALT=['NHL','MLB','Tennis','UFC'];
 let TEN={days:{},cur:{}};
 async function fetchTennis(full){
  const now=Date.now();
  for(const tour of ['atp','wta']){const base=`https://site.api.espn.com/apis/site/v2/sports/tennis/${tour}/scoreboard`;const d=await getJSON(base);if(d)TEN.cur[tour]=d;
-  if(full)await Promise.all([1,2,3].map(async k=>{const key=tour+ymdL(new Date(now+k*864e5));const old=TEN.days[key];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+ymdL(new Date(now+k*864e5)));if(x)TEN.days[key]={t:now,d:x};}));}
+  if(full)await Promise.all([0,1,2,3].map(async k=>{const key=tour+ymdL(new Date(now+k*864e5));const old=TEN.days[key];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+ymdL(new Date(now+k*864e5)));if(x)TEN.days[key]={t:now,d:x};}));}
 }
 function tennisList(){
  const seen=new Set(),out=[],now=Date.now(),lo=now-3*864e5,hi=now+5*864e5;
@@ -1337,6 +1339,68 @@ function renderAlt(ctx,R){
  $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>
  <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
  <div class="hint">${ctx.notes.join(' ')}</div>`;
+}
+
+
+/* ---------- UFC: fight cards, 100,000-simulation fight model ---------- */
+let UFC={d:null,t:0};
+async function fetchUFC(){const now=Date.now(),d0=ymdL(new Date(now-21*864e5)),d1=ymdL(new Date(now+35*864e5));const x=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${d0}-${d1}`);if(x){UFC.d=x;UFC.t=now;}}
+const recWL=s=>{const m=String(s||'').match(/(\d+)-(\d+)/);return m?[+m[1],+m[2]]:[0,0];};
+function ufcRecP(rA,rH){const [wa,la]=recWL(rA),[wh,lh]=recWL(rH),sa=(wa+3)/(wa+la+6),sh=(wh+3)/(wh+lh+6),ea=Math.log(wa+la+1),eh=Math.log(wh+lh+1);const z=2.6*(sh-sa)+.12*(eh-ea);return 1/(1+Math.exp(-z));}
+function ufcList(){
+ const out=[];if(!UFC.d)return out;
+ for(const e of UFC.d.events||[]){const comps=(e.competitions||[]).slice().reverse();comps.forEach((c,ix)=>{
+  const H=c.competitors.find(x=>x.order===1)||c.competitors[0],A=c.competitors.find(x=>x.order===2)||c.competitors[1];if(!H||!A)return;
+  const hn=(H.athlete&&H.athlete.displayName)||'TBD',an=(A.athlete&&A.athlete.displayName)||'TBD';
+  const s=c.status&&c.status.type?c.status.type.state:'pre',st=s==='in'?'live':s==='post'?'final':'up';
+  const rH=((H.records||[])[0]||{}).summary||'',rA=((A.records||[])[0]||{}).summary||'',wc=(c.type&&c.type.abbreviation)||'',bo=(c.format&&c.format.regulation&&c.format.regulation.periods)||3;
+  const pH=ufcRecP(rA,rH),t=Date.parse(c.date||e.date);
+  const when=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):st==='live'?`Round ${c.status.period||1} · ${c.status.displayClock||''}`:`Final · R${c.status.period||'?'} ${c.status.displayClock||''}`;
+  const win=st==='final'?(H.winner?'h':A.winner?'a':''):'';
+  out.push(['UFC',st,an,hn,st==='final'?(win==='a'?'W':win==='h'?'L':'D'):null,st==='final'?(win==='h'?'W':win==='a'?'L':'D'):null,`${ix===0?'Main event · ':''}${wc}${wc?' · ':''}${when}`,st==='up'?[Math.round((1-pH)*100),Math.round(pH*100)]:0,'',undefined,
+   {id:'U'+c.id,ufc:1,eid:e.id,cid:c.id,card:e.name,date:c.date||e.date,wc,bo,recA:rA,recH:rH,pRec:pH,la:(A.athlete&&A.athlete.flag&&A.athlete.flag.href)||'',lh:(H.athlete&&H.athlete.flag&&H.athlete.flag.href)||'',aa:abbrOf(an),ha:abbrOf(hn),period:c.status.period,clock:c.status.displayClock,main:ix===0}]);});}
+ return out;
+}
+const UFC_FIN={Heavyweight:[.47,.13],'Light Heavyweight':[.40,.15],Middleweight:[.33,.17],Welterweight:[.30,.17],Lightweight:[.26,.20],Featherweight:[.25,.18],Bantamweight:[.22,.16],Flyweight:[.17,.17],'W Bantamweight':[.18,.15],'W Featherweight':[.20,.15],'W Flyweight':[.13,.15],'W Strawweight':[.10,.17]};
+async function ufcOpen(g,idx){
+ const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
+ if(st==='final'){$('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Result</h2><div class="prow"><span>Winner</span><b>${hs==='W'?h:as==='W'?a:'Draw / no contest'}</b></div><div class="prow"><span>Ended</span><b>Round ${X.period||'?'} · ${X.clock||''}</b></div><div class="prow"><span>Card</span><b>${X.card||''}</b></div><div class="prow"><span>Weight class</span><b>${X.wc||''}</b></div><div class="prow"><span>Records before fight</span><b>${a} ${X.recA||'-'} · ${h} ${X.recH||'-'}</b></div></div>`;return;}
+ let pH=X.pRec,ml=null;
+ try{const r=await getJSON(`https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/events/${X.eid}/competitions/${X.cid}/odds`);const it=r&&r.items&&r.items[0];
+  if(it){const amA=it.awayAthleteOdds&&it.awayAthleteOdds.moneyLine,amH=it.homeAthleteOdds&&it.homeAthleteOdds.moneyLine,imp=m=>m<0?-m/(-m+100):100/(m+100);
+   if(amA!=null&&amH!=null){const qa=imp(amA),qh=imp(amH);pH=qh/(qa+qh);ml={a:amA,h:amH,book:(it.provider&&it.provider.name)||'DraftKings'};}}}catch(e){}
+ if(!MATCH||MATCH.idx!==idx)return;
+ const ctx={lg,st,a,h,pH,ml,bo:X.bo||3,wc:X.wc||'',rnd:st==='live'?(X.period||1):1,fin:UFC_FIN[X.wc]||[.28,.18]};
+ setTimeout(()=>{const R=ufcSim(ctx);if(MATCH&&MATCH.idx===idx)ufcRender(ctx,R,X);clearTimeout(MATCH.t);if(st==='live')MATCH.t=setTimeout(()=>{if(MATCH)openKey(encodeURIComponent(lg+'|'+a+'|'+h));},15000);},20);
+}
+function ufcSim(ctx){
+ const n=NSIM,bo=ctx.bo,W=new Uint8Array(n),M=new Uint8Array(n),Rn=new Uint8Array(n);
+ const hz=bo===5?[.33,.24,.18,.14,.11]:[.45,.31,.24],r0=ctx.rnd-1,hzs=hz.slice(r0),hsum=hzs.reduce((p,q)=>p+q,0);
+ const [ko,sub]=ctx.fin,left=hsum/hz.reduce((p,q)=>p+q,0);
+ for(let i=0;i<n;i++){const hw=Math.random()<ctx.pH,pw=hw?ctx.pH:1-ctx.pH,boost=.75+.5*pw,k=ko*boost*left*(bo===5?1.12:1),s=sub*boost*left*(bo===5?1.12:1),u=Math.random();
+  W[i]=hw?1:0;let m=2;if(u<k)m=0;else if(u<k+s)m=1;M[i]=m;
+  if(m===2)Rn[i]=bo;else{let v=Math.random()*hsum,j=0;while(j<hzs.length-1&&v>hzs[j]){v-=hzs[j];j++;}Rn[i]=r0+j+1;}}
+ return {W,M,Rn,n};
+}
+function ufcRender(ctx,R,X){
+ const {W,M,Rn,n}=R,h=ctx.h,a=ctx.a,pct0=x=>(x*100).toFixed(0)+'%',hint=t=>` <span class="hint" style="margin:0">${t}</span>`,bo=ctx.bo;
+ let hw=0;const cell=[[0,0,0],[0,0,0]],rc=new Array(bo+1).fill(0);for(let i=0;i<n;i++){hw+=W[i];cell[W[i]][M[i]]++;if(M[i]<2)rc[Rn[i]]++;}
+ const pH=hw/n,pA=1-pH,dec=(cell[0][2]+cell[1][2])/n,koP=(cell[0][0]+cell[1][0])/n,subP=(cell[0][1]+cell[1][1])/n;
+ const tot=L=>{let o=0;for(let i=0;i<n;i++){const v=M[i]===2?bo:(Rn[i]-1)+.5;if(v>L)o++;}return o/n;};
+ const fav=pH>=.5?h:a,favW=pH>=.5?1:0,mt=['by KO/TKO','by submission','by decision'],best=[0,1,2].map(m=>[m,cell[favW][m]]).sort((p,q)=>q[1]-p[1])[0];
+ const all=[];for(const w of [1,0])for(const m of [0,1,2])all.push([(w?h:a)+' '+mt[m],cell[w][m]/n]);all.sort((p,q)=>q[1]-p[1]);
+ const pred=[['Winner',`${fav}${hint(pct0(Math.max(pH,pA)))}`],['Method',`${koP>=subP&&koP>=dec?'KO/TKO':subP>=dec?'Submission':'Decision'}${hint(`KO ${pct0(koP)} · Sub ${pct0(subP)} · Dec ${pct0(dec)}`)}`],['Goes the distance',dec>=.5?`Yes${hint(pct0(dec))}`:`No${hint(pct0(1-dec))}`],
+  [`Total rounds O/U ${bo===5?'2.5':'1.5'}`,(()=>{const o=tot(bo===5?2.5:1.5);return o>=.5?`Over${hint(pct0(o))}`:`Under${hint(pct0(1-o))}`;})()],
+  ['Most likely result',`${all[0][0]}${hint(pct0(all[0][1]))}`],[`${fav} wins ${mt[best[0]]}`,pct0(best[1]/n)]];
+ if(ctx.ml)pred.push([`Moneyline (${ctx.ml.book})`,`${abbrOf(a)} ${ctx.ml.a>0?'+':''}${ctx.ml.a} · ${abbrOf(h)} ${ctx.ml.h>0?'+':''}${ctx.ml.h}`]);
+ const mx=Math.max(...cell.flat());
+ const grid=`<table class="rgrid"><tbody><tr><th></th><th>KO/TKO</th><th>Submission</th><th>Decision</th></tr>${[[1,h],[0,a]].map(([w,nm])=>`<tr><th style="text-align:left;white-space:nowrap">${nm}</th>${[0,1,2].map(m=>`<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(cell[w][m]/mx*85)}%,var(--surface2))">${(cell[w][m]/n*100).toFixed(1)}%</div></td>`).join('')}</tr>`).join('')}</tbody></table>
+ <div class="ggrid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));margin-top:12px">${[...Array(bo).keys()].map(r=>`<div class="rc" style="padding:12px 6px;background:color-mix(in srgb,var(--accent) ${Math.round(rc[r+1]/Math.max(...rc)*85)}%,var(--surface2))"><div style="font:700 15px var(--display)">Round ${r+1}</div>${(rc[r+1]/n*100).toFixed(1)}% finish</div>`).join('')}</div><div class="hint" style="text-align:center">Winner × method, and the chance the fight ends in each round</div>`;
+ const bH=badgeHTML(h,X.ha,null,X.lh),bA=badgeHTML(a,X.aa,null,X.la);
+ $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Fight prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?`Live · from round ${ctx.rnd}`:'Generated before the fight'} · ${NSIM.toLocaleString()} simulations · ${bo} rounds · ${ctx.wc}</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}
+ <div class="wprow"><div class="hint" style="margin:0">Win probability</div><div class="wpcells">${bH}<b>${pct0(pH)}</b><span class="wpsep"></span><b>${pct0(pA)}</b>${bA}</div></div></div>
+ <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
+ <div class="hint">${ctx.ml?`Win chances come from the ${ctx.ml.book} moneyline (vig removed).`:'No betting line yet, so win chances come from the fighters’ records.'} Finish rates use typical UFC rates for ${ctx.wc||'this division'}, nudged toward the favorite. Records: ${a} ${X.recA||'-'}, ${h} ${X.recH||'-'}.</div>`;
 }
 
 /* ---------- search: leagues, teams, players + their stats (ESPN) ---------- */
