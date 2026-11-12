@@ -1085,11 +1085,16 @@ function renderMatch(ctx,R){
  const win=(soc?[[P(hw),h],[P(dr),'Draw'],[P(aw),a]]:[[P(hw),h],[P(aw),a]]).sort((p,q)=>q[0]-p[0])[0];
  pred.push(['Full-time winner',`${win[1]} <span class="hint" style="margin:0">${pct0(win[0])}</span>`]);
  if(soc){
-  const btts=share((x,y)=>x>0&&y>0);pred.push(['Both teams to score',btts>=.5?`Yes <span class="hint" style="margin:0">${pct0(btts)}</span>`:`No <span class="hint" style="margin:0">${pct0(1-btts)}</span>`]);
-  const tg=new Map();for(let i=0;i<n;i++){const t=H[i]+A[i];tg.set(t,(tg.get(t)||0)+1);}pred.push(['Total goals',String([...tg.entries()].sort((p,q)=>q[1]-p[1])[0][0])]);
-  const L=liveL!=null?liveL:ctx.dk&&ctx.dk.tot!=null?ctx.dk.tot:2.5,o=share((x,y)=>x+y>L);pred.push([`Over/Under ${L} goals`,o>=.5?`Over <span class="hint" style="margin:0">${pct0(o)}</span>`:`Under <span class="hint" style="margin:0">${pct0(1-o)}</span>`]);
-  const top=[...sc.entries()].sort((p,q)=>q[1]-p[1])[0];if(top)pred.push(['Most likely score',`${top[0].replace('-',' – ')} <span class="hint" style="margin:0">${pct0(top[1]/n)}</span>`]);
-  for(const o of R.P){const g1=histGE(o.h.goals,1);if(g1>.25){pred.push(['Likely scorer',`${o.p.name} <span class="hint" style="margin:0">${pct0(g1)}</span>`]);break;}}
+  const sp=x=>` <span class="hint" style="margin:0">${x}</span>`;
+  const btts=share((x,y)=>x>0&&y>0);pred.push(['Both teams to score',btts>=.5?`Yes${sp(pct0(btts))}`:`No${sp(pct0(1-btts))}`]);
+  const CAVG={EPL:10.3,'La Liga':9.5,'Serie A':9.8,Bundesliga:9.6,'Ligue 1':9.4,UCL:9.8,MLS:9.8},lc=CAVG[ctx.lg]||9.0,lh0=ctx.lamH||1.4,la0=ctx.lamA||1.1,shH=clamp(.5+.6*(lh0-la0)/(lh0+la0),.3,.7);
+  const cH=lc*shH,cA=lc*(1-shH),pc=pOverPois(lc,9.5);
+  pred.push(['Corners',`${Math.round(lc)} <span class="hint" style="margin:0">est. · ${h} ${cH.toFixed(1)} – ${cA.toFixed(1)} ${a} · ${pc>=.5?'Over':'Under'} 9.5 ${pct0(Math.max(pc,1-pc))}</span>`]);
+  const tg=new Map();for(let i=0;i<n;i++){const t=H[i]+A[i];tg.set(t,(tg.get(t)||0)+1);}const tgTop=[...tg.entries()].sort((p,q)=>q[1]-p[1])[0];pred.push(['Total goals',`${tgTop[0]}${sp(pct0(tgTop[1]/n))}`]);
+  const L=liveL!=null?liveL:ctx.dk&&ctx.dk.tot!=null?ctx.dk.tot:2.5,o=share((x,y)=>x+y>L);pred.push([`Over/Under ${L} goals`,o>=.5?`Over${sp(pct0(o))}`:`Under${sp(pct0(1-o))}`]);
+  const top=[...sc.entries()].sort((p,q)=>q[1]-p[1])[0];if(top)pred.push(['Most likely score',`${top[0].replace('-',' – ')}${sp(pct0(top[1]/n))}`]);
+  let bestS=null;for(const o of R.P){const g1=histGE(o.h.goals,1);if(!bestS||g1>bestS[1])bestS=[o.p.name,g1];}
+  pred.push(['Likely scorer',bestS&&bestS[1]>0?`${bestS[0]}${sp(pct0(bestS[1]))}`:'<span class="hint" style="margin:0">No scorer data</span>']);
  }else{
   pred.push(['Projected score',`${h} ${eH.toFixed(0)} – ${eA.toFixed(0)} ${a}`]);
   pred.push(['Total points',ft.toFixed(0)]);
