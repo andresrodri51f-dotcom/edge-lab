@@ -1091,6 +1091,7 @@ async function openMatch(idx){
   if(st==='final')return renderFinal(sum);
   const ctx=await buildCtx(g,sum);
   if(st==='up'&&window.IMP){try{await IMP.apply(g,sum,MATCH&&MATCH.L,ctx);}catch(e){}}
+  if(window.IMP&&MATCH&&MATCH.L){try{await IMP.players(g,sum,MATCH.L,ctx);}catch(e){}}
   setTimeout(()=>{const R=runMatchSim(ctx);if(MATCH&&MATCH.idx===idx){renderMatch(ctx,R);window.IMP&&IMP.inject(ctx);}},20);
  }catch(e){$('mbody').innerHTML=`<div class="card">Could not build this match: ${e.message||e}</div>`;}
 }
@@ -1402,13 +1403,13 @@ function renderMatch(ctx,R){
  $('mbody').innerHTML=html+dkProps+propsHTML+oddsBtn;
  if(MATCH&&(ctx.st==='live'||ctx.st==='up')){const K=gameKey(MATCH.g);liveTick(K,g2=>reSim(GAMES.list.indexOf(g2)),ctx.st==='live'?15000:60000);}
 }
-async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);if(g[1]==='up'&&window.IMP){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}}if(!MATCH)return;const R=runMatchSim(ctx);if(MATCH){renderMatch(ctx,R);window.IMP&&IMP.inject(ctx);}}
+async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);if(g[1]==='up'&&window.IMP){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}}if(window.IMP&&MATCH&&MATCH.L){try{await IMP.players(g,MATCH.sum,MATCH.L,ctx);}catch(e){}}if(!MATCH)return;const R=runMatchSim(ctx);if(MATCH){renderMatch(ctx,R);window.IMP&&IMP.inject(ctx);}}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
 
 /* ---------- NHL, MLB and tennis: simulation + match page ---------- */
 const ALT=['NHL','MLB','Tennis','UFC'];
 function liveTick(K,fn,ms){if(!MATCH)return;clearTimeout(MATCH.t);MATCH.t=setTimeout(()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;const g2=GAMES.list.find(z=>gameKey(z)===K);if(!g2)return;MATCH.g=g2;MATCH.idx=GAMES.list.indexOf(g2);const hd=$('matchbox').querySelector('.mhead');if(hd)hd.innerHTML=matchHeader(g2);fn(g2);},ms);}
-function altRun(g,K){const ctx=altCtx(g);setTimeout(async()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;if(ctx.lg==='NHL'){try{const X=g[10]||{};if(g[1]==='live'&&X.id&&X.path){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(s2&&MATCH)MATCH.sum=s2;}ctx.pl=await nhlPlayers(g,MATCH&&MATCH.sum);}catch(e){ctx.pl=null;}if(!MATCH||gameKey(MATCH.g)!==K)return;}if(g[1]==='up'&&window.IMP&&(ctx.lg==='NHL'||ctx.lg==='MLB')){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}if(!MATCH||gameKey(MATCH.g)!==K)return;}const R=altSim(ctx);renderAlt(ctx,R);window.IMP&&IMP.inject(ctx);if(ctx.pl&&ctx.pl.length){try{$('mbody').insertAdjacentHTML('beforeend',nhlProps(ctx,R));}catch(e){}}if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
+function altRun(g,K){const ctx=altCtx(g);setTimeout(async()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;if(ctx.lg==='NHL'){try{const X=g[10]||{};if(g[1]==='live'&&X.id&&X.path){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(s2&&MATCH)MATCH.sum=s2;}ctx.pl=await nhlPlayers(g,MATCH&&MATCH.sum);}catch(e){ctx.pl=null;}if(!MATCH||gameKey(MATCH.g)!==K)return;}if(ctx.lg==='NHL'&&window.IMP&&MATCH&&MATCH.L){try{await IMP.players(g,MATCH.sum,MATCH.L,ctx);}catch(e){}}if(g[1]==='up'&&window.IMP&&(ctx.lg==='NHL'||ctx.lg==='MLB')){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}if(!MATCH||gameKey(MATCH.g)!==K)return;}const R=altSim(ctx);renderAlt(ctx,R);window.IMP&&IMP.inject(ctx);if(ctx.pl&&ctx.pl.length){try{$('mbody').insertAdjacentHTML('beforeend',nhlProps(ctx,R));}catch(e){}}if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
 let TEN={days:{},cur:{}};
 async function fetchTennis(full){
  const now=Date.now();
@@ -2607,7 +2608,6 @@ IMP.apply=async function(g,sum,L,ctx){const lg=g[0],X=g[10]||{},soc=SOCCER.inclu
    const effPct=-(att*100),oppPct=def*100;add(m.side,m.n,m.status,`${att>.004?fmt(effPct,'%')+' goals':''}${att>.004&&def>.004?' · ':''}${def>.004?'opp. '+fmt(oppPct,'%'):''}`||'small',m.p);}
   ctx.lamH=lh*mulH*defH;ctx.lamA=la*mulA*defA;
   // props: drop players who won't start
-  if(L){const xi=new Set(L.teams.flatMap(t=>t.ps.map(p=>nm(p.n))));ctx.players=ctx.players.filter(p=>xi.has(nm(p.name))||!L.teams.length);}
   ctx.players=ctx.players.filter(p=>!miss.find(m=>m.p>=.75&&nm(m.n)===nm(p.name)));
   for(const p of ctx.players){if(p.kind==='soc2'){p.lam=p.side==='h'?ctx.lamH:ctx.lamA;p.opp=p.side==='h'?ctx.lamA:ctx.lamH;}}
   const b1=poisRes(ctx.lamH,ctx.lamA);return ctx.imp={soc:1,items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:b0,after:b1,unit:'goals',ex:[[la,lh],[ctx.lamA,ctx.lamH]]};}
@@ -2632,12 +2632,35 @@ IMP.apply=async function(g,sum,L,ctx){const lg=g[0],X=g[10]||{},soc=SOCCER.inclu
   ctx.lamH=lh;ctx.lamA=la;return ctx.imp={items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:b0,after:ot(poisRes(lh,la),lh,la),unit:'runs',ex:[[la0,lh0],[la,lh]]};}
  return null;};
 
+
+/* players from the lineup (official or predicted): every available player gets simulated */
+const SOCF={};
+async function socFull(id,lgp){if(id in SOCF)return SOCF[id];let r=null;try{const d=await getJSON(`https://site.web.api.espn.com/apis/common/v3/sports/soccer/${lgp}/athletes/${id}/overview`);const s=d.statistics,n=s.names,t={};const tok=((s.splits.map(x=>(x.displayName||'').match(/\d{4}-\d{2}/)).find(Boolean))||[''])[0],use=s.splits.filter(x=>!tok||(x.displayName||'').includes(tok));for(const sp of (use.length?use:s.splits))sp.stats.forEach((v,i)=>{t[n[i]]=(t[n[i]]||0)+(parseFloat(String(v).replace(/,/g,''))||0);});const m=Math.max(1,t.starts||0);if((t.starts||0)>=2)r={g:(t.totalGoals||0)/m,a:(t.goalAssists||0)/m,sh:(t.totalShots||0)/m,sot:(t.shotsOnTarget||0)/m,fc:(t.foulsCommitted||0)/m,yc:(t.yellowCards||0)/m,sv:(t.saves||0)/m,starts:t.starts};}catch(e){}return SOCF[id]=r;}
+const DEF={0:{g:0,a:0,sh:0,sot:0,fc:.1,yc:.05,sv:2.8},1:{g:.04,a:.06,sh:.5,sot:.15,fc:1,yc:.18,sv:0},2:{g:.12,a:.14,sh:1.2,sot:.4,fc:1.2,yc:.2,sv:0},3:{g:.3,a:.12,sh:2.2,sot:.9,fc:.9,yc:.13,sv:0}};
+const dep4=p=>{p=String(p||'').toUpperCase();if(p==='G'||p==='GK')return 0;if(/^(CD|CB|D|LB|RB|SW|LWB|RWB)/.test(p))return 1;if(/^(F|CF|ST|LW|RW|W|SS)/.test(p))return 3;return 2;};
+IMP.players=async function(g,sum,L,ctx){if(!L)return;const lg=g[0],X=g[10]||{};
+ if(SOCCER.includes(lg)&&L.kind==='soccer'){const lgp=(X.path||'').split('/')[1];const all=L.teams.flatMap(t=>t.ps.map(p=>({...p,side:t.side})));await Promise.all(all.filter(p=>p.id).map(p=>socFull(p.id,lgp)));
+  const out=[];for(const t of L.teams){const ps=t.ps.map(p=>{const r=SOCF[p.id]||DEF[dep4(p.pos)];return {p,r,gk:dep4(p.pos)===0};});const sg=ps.reduce((s,x)=>s+(x.gk?0:x.r.g),0)||1,sa=ps.reduce((s,x)=>s+(x.gk?0:x.r.a),0)||1;
+   const lam=t.side==='h'?ctx.lamH:ctx.lamA,opp=t.side==='h'?ctx.lamA:ctx.lamH;
+   for(const x of ps){const shareG=x.gk?0:.9*x.r.g/sg,shareA=x.gk?0:Math.min(1-shareG,.68*x.r.a/sa);out.push({id:x.p.id,name:x.p.n,side:t.side,kind:'soc2',gk:x.gk,lam,opp,r:x.r,shareG,shareA,tag:(L.predicted?'predicted XI':'starting XI')+(SOCF[x.p.id]?'':' · position averages')});}}
+  if(out.length)ctx.players=out;ctx.lineupSim=L.predicted?'Predicted':'Official';return;}
+ if(lg==='NBA'&&ctx.st!=='live'){const tgt={a:ctx.mA*.93,h:ctx.mH*.93};for(const side of ['a','h']){const ps=ctx.players.filter(p=>p.side===side&&p.kind==='nba');const s=ps.reduce((x,p)=>x+p.rem.pts,0);if(!s)continue;const k=Math.max(.8,Math.min(1.3,tgt[side]*ctx.f/s));ps.forEach(p=>{p.rem.pts*=k;p.rem.ast*=Math.sqrt(k);});}
+  const st=new Set(L.teams.flatMap(t=>(t.ps||[]).map(p=>normN0(p.n))));ctx.players.forEach(p=>{if(st.has(normN0(p.name))&&!/starter/.test(p.tag||''))p.tag=((p.tag?p.tag+' · ':'')+(L.predicted?'projected starter':'starter'));});ctx.lineupSim=L.predicted?'Predicted':'Official';return;}
+ if(lg==='NHL'&&L.kind==='nhl'){const by=await nhlStats();if(!by)return;const out=[];const cur=(ctx.pl||[]).reduce((m,p)=>(m[normN0(p.n)]=p,m),{});
+  for(const t of L.teams){const roster=by[String(t.side==='h'?X.hid:X.aid)]||[],find=p=>roster.find(q=>String(q.id)===String(p.id))||roster.find(q=>normN0(q.n)===normN0(p.n));
+   const sk=[...(t.F||[]),...(t.D||[])].map(p=>({p,q:find(p)})).filter(x=>x.q&&x.q.gp>0);const tg=sk.reduce((s,x)=>s+x.q.g/x.q.gp,0)||1,ta=sk.reduce((s,x)=>s+x.q.a/x.q.gp,0)||1;
+   for(const x of sk){const c=cur[normN0(x.q.n)]||{};out.push({side:t.side,kind:'sk',n:x.q.n,pos:x.q.pos,gs:.95*(x.q.g/x.q.gp)/tg,as:Math.min(.95,1.7*(x.q.a/x.q.gp)/ta),spg:x.q.sh/x.q.gp,cg:c.cg||0,ca:c.ca||0,csh:c.csh||0});}
+   const g0=t.G&&t.G[0]&&find(t.G[0]);if(g0){const c=cur[normN0(g0.n)]||{};const tsh=sk.reduce((s,x)=>s+x.q.sh/x.q.gp,0);out.push({side:t.side,kind:'g',n:g0.n,pos:'G',svpct:g0.sa?g0.sv/g0.sa:.9,teamShots:tsh,csv:c.csv||0});}}
+  for(const p of out)if(p.kind==='g'){const o=out.find(q=>q.kind==='g'&&q.side!==p.side);p.oppShots=o?o.teamShots:29;}
+  if(out.length>4)ctx.pl=out;ctx.lineupSim=L.predicted?'Predicted':'Official';}};
+const normN0=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+
 /* card shown under the match prediction */
 IMP.card=function(ctx,h,a){const I=ctx&&ctx.imp;if(!I)return '';const pc=x=>(x*100).toFixed(0)+'%',soc=!!I.soc;
  const row=(lab,b,c)=>`<div class="ir"><span>${lab}</span><span class="iv"><s>${b}</s> → <b>${c}</b></span></div>`;
  const its=I.items.slice().sort((x,y)=>y.p-x.p);
  return `<div class="card msec impc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="ptitle" style="margin:0">Lineup & injury impact</h2>${I.lineup?`<span class="lu-badge ${I.lineup==='Official'?'ok':'pred'}">${I.lineup} lineup</span>`:''}</div>
- <div class="hint" style="margin:4px 0 10px">The ${NSIM.toLocaleString()} simulations above already include these changes.${I.mf<1?' Betting lines already price part of this news, so the model applies half of each effect.':''}</div>
+ <div class="hint" style="margin:4px 0 10px">${ctx.lineupSim?`Simulated with the ${ctx.lineupSim.toLowerCase()} lineup: only available players are on the field. `:''}The ${NSIM.toLocaleString()} simulations above already include these changes.${I.mf<1?' Betting lines already price part of this news, so the model applies half of each effect.':''}</div>
  ${its.length?its.map(m=>`<div class="ii"><span class="ic ${m.p>=.75?'out':'q'}">${m.p>=.75?'✕':'?'}</span><span style="flex:1;min-width:0"><b>${m.n}</b><small>${m.side==='h'?h:a} · ${m.why}</small></span><span class="ie">${m.eff}</span></div>`).join(''):'<div class="hint" style="margin:0 0 8px">No injuries or lineup changes that move the numbers.</div>'}
  <div class="ibox">${row(`${h} win`,pc(I.before[0]),pc(I.after[0]))}${soc?row('Draw',pc(I.before[1]),pc(I.after[1])):''}${row(`${a} win`,pc(I.before[2]),pc(I.after[2]))}${row('Projected score',`${a} ${I.ex[0][0].toFixed(1)}–${I.ex[0][1].toFixed(1)} ${h}`,`${I.ex[1][0].toFixed(1)}–${I.ex[1][1].toFixed(1)}`)}</div></div>`;};
 IMP.inject=function(ctx){try{if(!ctx||!ctx.imp)return;const mb=document.getElementById('mbody');if(!mb||mb.querySelector('.impc'))return;const first=mb.querySelector('.card');const html=IMP.card(ctx,ctx.h,ctx.a);if(first)first.insertAdjacentHTML('afterend',html);else mb.insertAdjacentHTML('afterbegin',html);}catch(e){}};
