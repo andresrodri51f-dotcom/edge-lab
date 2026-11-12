@@ -1311,7 +1311,7 @@ function tennisList(){
    const setLine=hs.map((v,i)=>`${as[i]??0}-${v}`).join(' · ');
    const info=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):(c.status.type.shortDetail||'');
    out.push(['Tennis',st,an,hn,st==='up'?null:aw,st==='up'?null:hw,`${(c.round&&c.round.displayName)||''}${info?' · '+info:''}`,st==='up'?[50,50]:0,'',undefined,
-    {id:'T'+c.id,ten:1,date:c.date||e.date,la:(A.athlete&&A.athlete.flag&&A.athlete.flag.href)||'',lh:(H.athlete&&H.athlete.flag&&H.athlete.flag.href)||'',tour:e.name,bo:(/Australian Open|Roland|French Open|Wimbledon|US Open/i.test(e.name||'')&&/Men/i.test((gr.grouping&&gr.grouping.displayName)||''))?5:3,setLine,hwS:hw,awS:aw,aa:abbrOf(an),ha:abbrOf(hn)}]);}}
+    {id:'T'+c.id,ten:1,venue:((c.venue||e.venue||{}).fullName)||'',city:(((c.venue||e.venue||{}).address)||{}).city||'',date:c.date||e.date,la:(A.athlete&&A.athlete.flag&&A.athlete.flag.href)||'',lh:(H.athlete&&H.athlete.flag&&H.athlete.flag.href)||'',tour:e.name,bo:(/Australian Open|Roland|French Open|Wimbledon|US Open/i.test(e.name||'')&&/Men/i.test((gr.grouping&&gr.grouping.displayName)||''))?5:3,setLine,hwS:hw,awS:aw,aa:abbrOf(an),ha:abbrOf(hn)}]);}}
  return out;
 }
 function altCtx(g){
@@ -1380,6 +1380,12 @@ function lockHTML(g){const [lg,st,a,h]=g,ufc=lg==='UFC';
  <button class="paybtn" onclick="buyPro()">Unlock predictions · ${PRO_PRICE}</button>
  <div class="hint" id="paynote" style="max-width:360px;margin:10px 0 0"> Pay with Apple Pay or Google Pay. Cancel anytime.</div>
  <div class="codebox"><input id="procode" placeholder="Access code" autocomplete="off" onkeydown="if(event.key==='Enter')tryCode()"><button class="btn ghost" style="padding:8px 12px" onclick="tryCode()">Apply</button></div></div></div>`;}
+const VIMG={};
+function venueImg(name,city){const k=name+'|'+city;if(VIMG[k])return VIMG[k];
+ return VIMG[k]=(async()=>{try{const st=JSON.parse(localStorage.getItem('el_vimg')||'{}');if(k in st)return st[k];}catch(e){}
+  let u='';try{const r=await fetch('https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(name+' '+city)+'&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=1280&format=json&origin=*');const d=await r.json();const pg=Object.values((d.query&&d.query.pages)||{})[0];u=(pg&&pg.thumbnail&&pg.thumbnail.source)||'';
+   if(u&&/logo|\.svg|flag|crest|emblem/i.test(u))u='';}catch(e){}
+  try{const st=JSON.parse(localStorage.getItem('el_vimg')||'{}');st[k]=u;localStorage.setItem('el_vimg',JSON.stringify(st));}catch(e){}return u;})();}
 const initials=n=>String(n||'').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const faceHTML=(src,n)=>`<span class="face"><i>${initials(n)}</i>${src?`<img src="${src}" alt="" onerror="this.remove()">`:''}</span>`;
 function infoHTML(g,sum){
@@ -1397,8 +1403,11 @@ function infoHTML(g,sum){
  if(lg==='Tennis'){cells.push(['Tournament',X.tour||''],['Format',`Best of ${X.bo||3} sets`]);}
  if(X.recA&&lg!=='UFC')cells.push(['Records',`${X.aa||abbrOf(a)} ${X.recA} · ${X.ha||abbrOf(h)} ${X.recH||'-'}`]);
  const ss=sum&&sum.seasonseries&&sum.seasonseries[0];if(ss&&ss.summary)cells.push(['Season series',ss.summary]);
- const img=V.images&&V.images[0]&&V.images[0].href;
- let out=`<div class="card msec"><h2 class="ptitle">Game info</h2>${img?`<div class="ibanner" style="background-image:url('${img}')"><span>${V.fullName||''}</span></div>`:''}<div class="igrid">${cells.map(([k,v])=>`<div class="icell"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div></div>`;
+ const vn=V.fullName||X.venue||'',vc=ad.city||X.city||'';if(!V.fullName&&X.venue)cells.splice(1,0,['Venue',X.venue]);
+ const img=V.images&&V.images[0]&&V.images[0].href;let ban='';
+ if(img)ban=`<div class="ibanner" style="background-image:url('${img}')"><span>${vn}</span></div>`;
+ else if(vn){const bid='vb'+Math.random().toString(36).slice(2,8);ban=`<div class="ibanner" id="${bid}" style="display:none"><span>${vn}</span></div>`;venueImg(vn,vc).then(u=>{const el=document.getElementById(bid);if(el&&u){el.style.backgroundImage=`url('${u}')`;el.style.display='';}});}
+ let out=`<div class="card msec"><h2 class="ptitle">Game info</h2>${ban}<div class="igrid">${cells.map(([k,v])=>`<div class="icell"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div></div>`;
  const tm=(T)=>{const ab=(T&&(T.abbreviation||T.displayName))||'';return ab;};
  const L5=(sum&&sum.lastFiveGames)||[];
  if(L5.length){out+=`<div class="card msec"><h2 class="ptitle">Form · last 5</h2>${L5.map(f=>`<div class="frow"><span style="display:flex;align-items:center;gap:8px">${f.team&&f.team.logo?`<img src="${f.team.logo}" alt="" style="width:26px;height:26px;object-fit:contain">`:''}<b>${(f.team&&f.team.displayName)||''}</b></span><span>${(f.events||[]).slice(0,5).map(e=>`<span class="fp ${e.gameResult||'D'}" title="${e.atVs||''} ${(e.opponent&&e.opponent.abbreviation)||''} ${e.score||''}">${e.gameResult||'-'}</span>`).join('')}</span></div>`).join('')}</div>`;}
@@ -1425,7 +1434,7 @@ function ufcList(){
   const when=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):st==='live'?`Round ${c.status.period||1} · ${c.status.displayClock||''}`:`Final · R${c.status.period||'?'} ${c.status.displayClock||''}`;
   const win=st==='final'?(H.winner?'h':A.winner?'a':''):'';
   out.push(['UFC',st,an,hn,st==='final'?(win==='a'?'W':win==='h'?'L':'D'):null,st==='final'?(win==='h'?'W':win==='a'?'L':'D'):null,`${ix===0?'Main event · ':''}${wc}${wc?' · ':''}${when}`,st==='up'?[Math.round((1-pH)*100),Math.round(pH*100)]:0,'',undefined,
-   {id:'U'+c.id,ufc:1,eid:e.id,cid:c.id,card:e.name,date:c.date||e.date,wc,bo,recA:rA,recH:rH,pRec:pH,la:(A.athlete&&A.athlete.flag&&A.athlete.flag.href)||'',lh:(H.athlete&&H.athlete.flag&&H.athlete.flag.href)||'',aa:abbrOf(an),ha:abbrOf(hn),period:c.status.period,clock:c.status.displayClock,main:ix===0}]);});}
+   {id:'U'+c.id,ufc:1,venue:(c.venue||{}).fullName||'',city:((c.venue||{}).address||{}).city||'',eid:e.id,cid:c.id,card:e.name,date:c.date||e.date,wc,bo,recA:rA,recH:rH,pRec:pH,la:(A.athlete&&A.athlete.flag&&A.athlete.flag.href)||'',lh:(H.athlete&&H.athlete.flag&&H.athlete.flag.href)||'',aa:abbrOf(an),ha:abbrOf(hn),period:c.status.period,clock:c.status.displayClock,main:ix===0}]);});}
  return out;
 }
 const UFC_FIN={Heavyweight:[.47,.13],'Light Heavyweight':[.40,.15],Middleweight:[.33,.17],Welterweight:[.30,.17],Lightweight:[.26,.20],Featherweight:[.25,.18],Bantamweight:[.22,.16],Flyweight:[.17,.17],'W Bantamweight':[.18,.15],'W Featherweight':[.20,.15],'W Flyweight':[.13,.15],'W Strawweight':[.10,.17]};
