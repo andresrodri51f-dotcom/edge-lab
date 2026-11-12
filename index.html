@@ -904,7 +904,7 @@ function autoPanel(M,S){
 function toggleOut(id,on){if(on)LIVE.outs.add(id);else LIVE.outs.delete(id);runLive();}
 
 /* ---------- match page: 100,000 simulations of every market + player props ---------- */
-const ROSTER={};let MATCH=null;
+const ROSTER={},SOCP={};let MATCH=null;
 const NSIM=100000;
 async function nbaRoster(tid){if(ROSTER[tid])return ROSTER[tid];const d=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${tid}/roster`);return ROSTER[tid]=(d&&d.athletes)||[];}
 function gp(rec){if(!rec)return 0;return String(rec).split('-').reduce((s,x)=>s+(parseInt(x)||0),0);}
@@ -916,9 +916,9 @@ function soccerMinute(X,info){const m=String(X.clock||info||'').match(/(\d+)'/);
 function histQ(h,q){let t=0;for(const c of h)t+=c;let acc=0;for(let i=0;i<h.length;i++){acc+=h[i];if(acc>=q*t)return i;}return h.length-1;}
 function histGE(h,k){let t=0,s=0;for(let i=0;i<h.length;i++){t+=h[i];if(i>=k)s+=h[i];}return t?s/t:0;}
 function addH(h,v){h[Math.min(h.length-1,Math.max(0,Math.round(v)))]++;}
-const MILE={pts:[10,15,20,25,30,35,40],reb:[4,6,8,10,12,15],ast:[2,4,6,8,10,12],pra:[15,20,25,30,35,40,45,50],passYds:[150,200,225,250,275,300,350],passTD:[1,2,3],rushYds:[25,40,50,60,75,100,125],recYds:[25,40,50,60,75,100,125],rec:[2,3,4,5,6,8],td:[1,2],goals:[1,2]};
-const SLAB={pts:'Points',reb:'Rebounds',ast:'Assists',pra:'Pts+Reb+Ast',passYds:'Passing yards',passTD:'Passing TDs',rushYds:'Rushing yards',recYds:'Receiving yards',rec:'Receptions',td:'Anytime TD',goals:'Goals'};
-const LEN={pts:121,reb:41,ast:41,pra:161,passYds:701,passTD:9,rushYds:301,recYds:301,rec:21,td:6,goals:6};
+const MILE={assists:[1,2],shots:[1,2,3,4,5],sot:[1,2,3],saves:[2,3,4,5,6],fouls:[1,2,3],cards:[1],pts:[10,15,20,25,30,35,40],reb:[4,6,8,10,12,15],ast:[2,4,6,8,10,12],pra:[15,20,25,30,35,40,45,50],passYds:[150,200,225,250,275,300,350],passTD:[1,2,3],rushYds:[25,40,50,60,75,100,125],recYds:[25,40,50,60,75,100,125],rec:[2,3,4,5,6,8],td:[1,2],goals:[1,2]};
+const SLAB={assists:'Assists',shots:'Shots',sot:'Shots on target',saves:'Saves',fouls:'Fouls committed',cards:'Booked',pts:'Points',reb:'Rebounds',ast:'Assists',pra:'Pts+Reb+Ast',passYds:'Passing yards',passTD:'Passing TDs',rushYds:'Rushing yards',recYds:'Receiving yards',rec:'Receptions',td:'Anytime TD',goals:'Goals'};
+const LEN={assists:6,shots:21,sot:13,saves:21,fouls:13,cards:3,pts:121,reb:41,ast:41,pra:161,passYds:701,passTD:9,rushYds:301,recYds:301,rec:21,td:6,goals:6};
 
 const PROPMAP={'Total Points':'pts','Total Rebounds':'reb','Total Assists':'ast','Total Points, Rebounds, and Assists':'pra','Points Milestones':'pts','Rebounds Milestones':'reb','Assists Milestones':'ast','Points + Assists + Rebounds Milestones':'pra',
  'Total Passing Yards (incl. overtime)':'passYds','Total Rushing Yards (incl. overtime)':'rushYds','Total Receiving Yards (incl. overtime)':'recYds','Total Receptions (incl. overtime)':'rec','Total Passing Touchdowns (incl. overtime)':'passTD',
@@ -997,9 +997,18 @@ async function buildCtx(g,sum){
   if(p3){[lh,la]=fitLam(p3[0],p3[1],p3[2],dk0?dk0.tot:null,pO);ctx.notes.push('Goal rates are fitted to the DraftKings win/draw/win and total odds, so moneyline edges will be small; the value is in exact scores, both-teams-score, team goals and scorers.');}
   else if(sum&&sum.odds){/* keep defaults */}
   const mi=st==='live'?soccerMinute(X,info):0;ctx.f=(90-mi)/90;ctx.lamH=lh;ctx.lamA=la;ctx.minute=mi;
-  if(sum&&sum.leaders)for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
-   const gl=(T.leaders||[]).find(c=>/goal/i.test(c.name||''));for(const l of ((gl&&gl.leaders)||[]).slice(0,3)){const m=numIn(l.displayValue,/Matches:\s*(\d+)/),gs=numIn(l.displayValue,/Goals:\s*(\d+)/);if(!m||!gs)continue;
-    ctx.players.push({name:l.athlete.displayName,side,kind:'soc',share:clamp((gs/m)/1.6,.03,.45)});}}
+  if(sum&&sum.leaders){const want=[];
+   for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
+    for(const cat of T.leaders||[]){if(!/goal|assist|shots|saves/i.test(cat.name||''))continue;for(const l of (cat.leaders||[]).slice(0,cat.name==='saves'?1:3)){if(!want.find(w=>w.id===l.athlete.id))want.push({id:l.athlete.id,name:l.athlete.displayName,side,gk:cat.name==='saves',dv:l.displayValue,cat:cat.name});}}}
+   const lgp=(X.path||'').split('/')[1];
+   await Promise.all(want.map(async w=>{if(!(w.id in SOCP)){const d=await getJSON(`https://site.web.api.espn.com/apis/common/v3/sports/soccer/${lgp}/athletes/${w.id}/overview`);let r=null;
+    try{const s=d.statistics,nm=s.names,tot={};for(const sp of s.splits||[])sp.stats.forEach((v,i)=>{tot[nm[i]]=(tot[nm[i]]||0)+(parseFloat(String(v).replace(/,/g,''))||0);});const m=Math.max(1,tot.starts||0);
+     if(tot.starts>=2)r={g:(tot.totalGoals||0)/m,a:(tot.goalAssists||0)/m,sh:(tot.totalShots||0)/m,sot:(tot.shotsOnTarget||0)/m,fc:(tot.foulsCommitted||0)/m,yc:(tot.yellowCards||0)/m,sv:(tot.saves||0)/m};}catch(e){}SOCP[w.id]=r;}}));
+   for(const w of want){const r=SOCP[w.id];const lam=w.side==='h'?ctx.lamH:ctx.lamA,opp=w.side==='h'?ctx.lamA:ctx.lamH;
+    if(r){ctx.players.push({id:w.id,name:w.name,side:w.side,kind:'soc2',gk:w.gk||r.sv>.5,lam,opp,r,shareG:clamp(r.g/Math.max(lam,.6),0,.6),shareA:clamp(r.a/Math.max(lam,.6),0,.5)});}
+    else if(/goal/i.test(w.cat)){const m=numIn(w.dv,/Matches:\s*(\d+)/),gs=numIn(w.dv,/Goals:\s*(\d+)/);if(m&&gs)ctx.players.push({id:w.id,name:w.name,side:w.side,kind:'soc',share:clamp((gs/m)/1.6,.03,.45)});}}
+   ctx.notes.push('Soccer player props use each player’s per-match season stats (goals, assists, shots, shots on target, saves, fouls, cards), simulated together with the team’s goals.');
+  }
   return ctx;
  }
  const C=LCFG[lg];
@@ -1056,11 +1065,16 @@ function runMatchSim(ctx){
   for(let i=0;i<n;i++){const D=Math.max(0,Math.round(11*ctx.f+1.2*Math.sqrt(ctx.f)*randn()));const ra=drv(D,aT,aF),rh=drv(D,hT,hF);let a=ctx.ca+ra,h=ctx.ch+rh;
    if(a===h){const pts=Math.random()<.55?3:6;if(Math.random()<pOT)a+=pts;else h+=pts;}A[i]=a;H[i]=h;KA[i]=ctx.remA>.5?ra/ctx.remA:1;KH[i]=ctx.remH>.5?rh/ctx.remH:1;}}
  // players
- const P=ctx.players.map(p=>{const o={p,h:{}};const keys=p.kind==='nba'?['pts','reb','ast','pra']:p.kind==='qb'?['passYds','passTD']:p.kind==='rb'?['rushYds','td']:p.kind==='wr'?['recYds','rec','td']:['goals'];for(const k of keys)o.h[k]=new Uint32Array(LEN[k]);return o;});
+ const P=ctx.players.map(p=>{const o={p,h:{}};const keys=p.kind==='nba'?['pts','reb','ast','pra']:p.kind==='qb'?['passYds','passTD']:p.kind==='rb'?['rushYds','td']:p.kind==='wr'?['recYds','rec','td']:p.kind==='soc2'?(p.gk?['saves']:['goals','assists','shots','sot','fouls','cards']):['goals'];for(const k of keys)o.h[k]=new Uint32Array(LEN[k]);return o;});
  for(let i=0;i<n;i++){
   for(const o of P){const p=o.p,k=p.side==='a'?KA[i]:KH[i];
    if(p.kind==='nba'){const kk=clamp(k,.3,2.2),mp=p.rem.pts*kk,pt=p.cur.pts+Math.max(0,mp+Math.sqrt(2.6*Math.max(mp,.01))*randn()),rb=p.cur.reb+rnegbin(p.rem.reb*Math.sqrt(kk),1.35),as2=p.cur.ast+rnegbin(p.rem.ast*kk,1.45);
     addH(o.h.pts,pt);addH(o.h.reb,rb);addH(o.h.ast,as2);addH(o.h.pra,pt+rb+as2);}
+   else if(p.kind==='soc2'){const G=Math.round(k),og=Math.round(p.side==='a'?KH[i]:KA[i]),f=ctx.f,r=p.r,kk=Math.sqrt((G+.5)/(p.lam*f+.5));
+    if(p.gk){addH(o.h.saves,rnegbin(Math.max(.05,r.sv*f*(p.opp/1.3)),1.2));}
+    else{let g=0,as2=0;for(let j=0;j<G;j++){const u=Math.random();if(u<p.shareG)g++;else if(u<p.shareG+p.shareA)as2++;}
+     addH(o.h.goals,g);addH(o.h.assists,as2);const sot=Math.max(g,rnegbin(Math.max(.03,r.sot*f*kk),1.2));addH(o.h.sot,sot);addH(o.h.shots,Math.max(sot,rnegbin(Math.max(.05,r.sh*f*kk),1.3)));
+     addH(o.h.fouls,rnegbin(Math.max(.03,r.fc*f),1.3));addH(o.h.cards,Math.random()<1-Math.exp(-r.yc*f)?1:0);}}
    else if(p.kind==='soc'){const G=Math.round(k);let s=0;for(let j=0;j<G;j++)if(Math.random()<p.share)s++;addH(o.h.goals,s);}
    else{const kk=clamp(k,.2,2.5),ky=Math.pow(kk,.7);
     if(p.kind==='qb'){addH(o.h.passYds,Math.max(0,p.y*ky+.27*p.y*randn()));addH(o.h.passTD,rpois(p.t*kk));}
@@ -1093,7 +1107,7 @@ function renderMatch(ctx,R){
   const tg=new Map();for(let i=0;i<n;i++){const t=H[i]+A[i];tg.set(t,(tg.get(t)||0)+1);}const tgTop=[...tg.entries()].sort((p,q)=>q[1]-p[1])[0];pred.push(['Total goals',`${tgTop[0]}${sp(pct0(tgTop[1]/n))}`]);
   const L=liveL!=null?liveL:ctx.dk&&ctx.dk.tot!=null?ctx.dk.tot:2.5,o=share((x,y)=>x+y>L);pred.push([`Over/Under ${L} goals`,o>=.5?`Over${sp(pct0(o))}`:`Under${sp(pct0(1-o))}`]);
   const top=[...sc.entries()].sort((p,q)=>q[1]-p[1])[0];if(top)pred.push(['Most likely score',`${top[0].replace('-',' – ')}${sp(pct0(top[1]/n))}`]);
-  let bestS=null;for(const o of R.P){const g1=histGE(o.h.goals,1);if(!bestS||g1>bestS[1])bestS=[o.p.name,g1];}
+  let bestS=null;for(const o of R.P){if(!o.h.goals)continue;const g1=histGE(o.h.goals,1);if(!bestS||g1>bestS[1])bestS=[o.p.name,g1];}
   pred.push(['Likely scorer',bestS&&bestS[1]>0?`${bestS[0]}${sp(pct0(bestS[1]))}`:'<span class="hint" style="margin:0">No scorer data</span>']);
  }else{
   pred.push(['Projected score',`${h} ${eH.toFixed(0)} – ${eA.toFixed(0)} ${a}`]);
@@ -1159,10 +1173,10 @@ function renderMatch(ctx,R){
  // player props: one row per outcome, highest chance first
  const items=[];
  for(const o of R.P){const p=o.p,tn=p.side==='a'?a:h;
-  for(const [k,hh] of Object.entries(o.h)){let tot=0,mean=0;for(let i=0;i<hh.length;i++){tot+=hh[i];mean+=i*hh[i];}mean/=tot||1;const lo=histQ(hh,.1),hi=histQ(hh,.9),cnt=k==='td'||k==='goals';
+  for(const [k,hh] of Object.entries(o.h)){let tot=0,mean=0;for(let i=0;i<hh.length;i++){tot+=hh[i];mean+=i*hh[i];}mean/=tot||1;const lo=histQ(hh,.1),hi=histQ(hh,.9),cnt=['td','goals','assists','cards'].includes(k);
    const base={name:p.name,team:tn,tag:p.tag,stat:SLAB[k],proj:cnt?'—':mean.toFixed(1),range:cnt?'—':lo+'–'+hi};
-   if(cnt){[[1,k==='td'?'Anytime TD':'Anytime goal'],[2,k==='td'?'2+ TDs':'2+ goals']].forEach(([m,l])=>items.push({...base,label:l,p:histGE(hh,m)}));continue;}
-   if(mean<1.5)continue;
+   if(cnt){const LB={td:['Anytime TD','2+ TDs'],goals:['Anytime goal','2+ goals'],assists:['Anytime assist','2+ assists'],cards:['To be booked']}[k];LB.forEach((l,j)=>items.push({...base,label:l,p:histGE(hh,j+1)}));continue;}
+   if(mean<(o.p.kind==='soc2'?.3:1.5))continue;
    const L=Math.max(.5,Math.floor(mean)+.5),pO=histGE(hh,Math.ceil(L));
    items.push({...base,label:`Over ${L}`,p:pO},{...base,label:`Under ${L}`,p:1-pO});
    for(const m of (MILE[k]||[]))items.push({...base,label:`${m}+`,p:histGE(hh,m)});}}
