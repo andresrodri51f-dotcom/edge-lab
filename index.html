@@ -1457,10 +1457,10 @@ async function nhlStats(){if(NHLST)return NHLST;
 async function nhlPlayers(g,sum){const X=g[10]||{};if(!X.aid||!X.hid)return null;const by=await nhlStats();if(!by)return null;
  const cur={};if(sum&&sum.boxscore&&sum.boxscore.players)for(const tp of sum.boxscore.players)for(const cat of tp.statistics||[]){const keys=cat.keys||cat.names||[];for(const at of cat.athletes||[]){const id=at.athlete&&at.athlete.id;if(!id)continue;const c=cur[id]||(cur[id]={});keys.forEach((k,i)=>{const v=parseFloat(String((at.stats||[])[i]||'').replace(/,/g,''));if(!isNaN(v))c[k]=v;});}}
  const out=[];for(const [side,tid] of [['a',String(X.aid)],['h',String(X.hid)]]){const L=(by[tid]||[]).filter(p=>p.gp>0);if(!L.length)continue;
-  const sk=L.filter(p=>p.pos!=='G'),tg=sk.reduce((s,p)=>s+p.g/p.gp,0)||1,ta=sk.reduce((s,p)=>s+p.a/p.gp,0)||1,tsh=sk.reduce((s,p)=>s+p.sh/p.gp,0);
+  const sk=L.filter(p=>p.pos!=='G'),TG=Math.max(...L.map(p=>p.gp)),tg=(sk.reduce((s,p)=>s+p.g,0)/TG)||1,ta=(sk.reduce((s,p)=>s+p.a,0)/TG)||1,tsh=sk.reduce((s,p)=>s+p.sh,0)/TG;
   const top=sk.filter(p=>p.gp>=3).sort((p,q)=>(q.g+q.a)/q.gp-(p.g+p.a)/p.gp).slice(0,8);
   for(const p of top){const c=cur[p.id]||{};out.push({side,kind:'sk',n:p.n,pos:p.pos,gs:(p.g/p.gp)/tg,as:Math.min(.95,1.7*(p.a/p.gp)/ta),spg:p.sh/p.gp,cg:c.goals||0,ca:c.assists||0,csh:c.shotsTotal||c.shots||0});}
-  const gk=L.filter(p=>p.pos==='G'&&p.gp>0).sort((p,q)=>q.gp-p.gp)[0];if(gk)out.push({side,kind:'g',n:gk.n,pos:'G',svpct:gk.sa?gk.sv/gk.sa:.9,teamShots:tsh,csv:(cur[gk.id]||{}).saves||0});}
+  const gks=L.filter(p=>p.pos==='G'&&p.gp>0),gk=gks.find(p=>cur[p.id]&&cur[p.id].saves!=null)||gks.sort((p,q)=>q.gp-p.gp)[0];if(gk)out.push({side,kind:'g',n:gk.n,pos:'G',svpct:gk.sa?gk.sv/gk.sa:.9,teamShots:tsh,csv:(cur[gk.id]||{}).saves||0});}
  for(const p of out)if(p.kind==='g'){const opp=out.find(q=>q.kind==='g'&&q.side!==p.side);p.oppShots=opp?opp.teamShots:29;}
  return out;}
 function nhlProps(ctx,R){const {H,A,n}=R,f=ctx.f!=null?ctx.f:1,live=ctx.st==='live',N=Math.min(n,40000),rows=[];
