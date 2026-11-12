@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a0c0f">
 <title>Edge Lab</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231fdc78'/%3E%3Cstop offset='1' stop-color='%2312b8ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='48' height='48' rx='14' fill='url(%23g)'/%3E%3Cpath d='M9 34 C16 33 18 18 24 18 S31 30 39 12' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='39' cy='12' r='3.6' fill='white'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cdefs%3E%3ClinearGradient id=%22lg1%22 x1=%220%22 y1=%221%22 x2=%221%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22#1fdc78%22/%3E%3Cstop offset=%221%22 stop-color=%22#12b8ff%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x=%221%22 y=%221%22 width=%2246%22 height=%2246%22 rx=%2213%22 fill=%22#0f1714%22 stroke=%22url(#lg1)%22 stroke-width=%222%22/%3E%3Crect x=%2211%22 y=%2227%22 width=%226%22 height=%2210%22 rx=%222%22 fill=%22#1fdc78%22 opacity=%22.45%22/%3E%3Crect x=%2221%22 y=%2221%22 width=%226%22 height=%2216%22 rx=%222%22 fill=%22#1fdc78%22 opacity=%22.7%22/%3E%3Crect x=%2231%22 y=%2214%22 width=%226%22 height=%2223%22 rx=%222%22 fill=%22url(#lg1)%22/%3E%3Cpath d=%22M10 22 L20 15 L26 18 L37 9%22 fill=%22none%22 stroke=%22#12b8ff%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M32 9 H37 V14%22 fill=%22none%22 stroke=%22#12b8ff%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@500&family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -273,6 +273,7 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 #probox{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:42}
 .pro-hero{text-align:center;padding:28px 18px}.pro-hero h2{font:800 34px/1 var(--display);text-transform:uppercase;margin:8px 0}.pro-price{font:800 52px/1 var(--display);color:var(--accent)}
 .pro-list{list-style:none;padding:0;margin:16px auto;max-width:360px;text-align:left}.pro-list li{padding:10px 0;border-top:1px solid var(--line)}.pro-list li::before{content:"✓  ";color:var(--accent);font-weight:800}
+.tvchip{font:600 11px var(--body);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}.gopen2{font:700 12px var(--body);color:var(--accent)}
 </style>
 
 </head>
@@ -280,7 +281,7 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 <div class="wrap">
 <header>
   <div class="brand">
-    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1fdc78"/><stop offset="1" stop-color="#12b8ff"/></linearGradient></defs><rect width="48" height="48" rx="14" fill="url(#lg1)"/><path d="M9 34 C16 33 18 18 24 18 S31 30 39 12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="39" cy="12" r="3.6" fill="#fff"/><path d="M9 38 H39" stroke="rgba(255,255,255,.45)" stroke-width="2" stroke-linecap="round"/></svg>
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#1fdc78"/><stop offset="1" stop-color="#12b8ff"/></linearGradient></defs><rect x="1" y="1" width="46" height="46" rx="13" fill="#0f1714" stroke="url(#lg1)" stroke-width="2"/><rect x="11" y="27" width="6" height="10" rx="2" fill="#1fdc78" opacity=".45"/><rect x="21" y="21" width="6" height="16" rx="2" fill="#1fdc78" opacity=".7"/><rect x="31" y="14" width="6" height="23" rx="2" fill="url(#lg1)"/><path d="M10 22 L20 15 L26 18 L37 9" fill="none" stroke="#12b8ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 9 H37 V14" fill="none" stroke="#12b8ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <div>
       <h1>Edge<span>Lab</span></h1>
       <div class="sub">Live scores and 100,000-simulation predictions for every game</div>
@@ -782,7 +783,8 @@ function gameCard(g,idx){
  const win=(st!=='up'&&as!=null)?(as>hs?a:hs>as?h:null):null;
  const d=X.date?new Date(X.date):null;
  const stt=st==='live'?`<span class="gst live">${lg==='UFC'?'LIVE':(info.split('·').pop()||'LIVE').trim()}</span>`:st==='final'?'<span class="gst">Final</span>':`<span class="gst">${d?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}</span>`;
- let pk='';if(pr&&st!=='final'){const segs=soc?[[h,pr[1]],['Draw',pr[2]||0],[a,pr[0]]]:[[a,pr[0]],[h,pr[1]]];const b=segs.sort((p,q)=>q[1]-p[1])[0];pk=`<div class="gpk"><i>Model</i><b>${b[0]==='Draw'?'DRAW':(lg==='UFC'||lg==='Tennis'?abbrOf(b[0]):(b[0]===a?X.aa:X.ha)||abbrOf(b[0]))} ${(+b[1]).toFixed(0)}%</b><div class="mbar"><span style="width:${b[1]}%"></span></div></div>`;}
+ const dd=d?(()=>{const t0=new Date();t0.setHours(0,0,0,0);const k=Math.round((new Date(d).setHours(0,0,0,0)-t0)/864e5);return k===0?'Today':k===1?'Tomorrow':k===-1?'Yesterday':d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});})():'';
+ const tv=X.natTV||'';const pk=`<div class="gpk">${st==='up'?`<i>${dd}</i>`:''}${tv?`<span class="tvchip">📺 ${tv}</span>`:''}<span class="gopen2">${st==='final'?'Recap':'Preview'} ›</span></div>`;
  const sub=lg==='UFC'?(X.wc||'')+(X.main?' · Main event':''):lg==='Tennis'?(X.setLine||X.tour||''):'';
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="grow ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
