@@ -118,6 +118,32 @@ tr:last-child td{border-bottom:0}
 .pbar{display:flex;height:6px;border-radius:99px;overflow:hidden;margin-top:10px;background:var(--surface2)}
 .plab{display:flex;justify-content:space-between;color:var(--mut);font-size:11px;margin-top:4px}
 #livebox .card{box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.gcard{cursor:pointer;transition:transform .12s ease,border-color .12s ease}
+.gcard:hover{transform:translateY(-2px);border-color:var(--line2)}
+.gcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gopen{font-size:12px;font-weight:700;color:var(--accent);margin-right:auto}
+@media (prefers-reduced-motion:reduce){.gcard{transition:none}.gcard:hover{transform:none}}
+.lgsec{margin-bottom:22px}
+.lghead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:6px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.lghead h2{margin:0;font:700 22px var(--display);text-transform:uppercase;letter-spacing:.02em}
+#matchbox{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:40}
+.mwrap{max-width:1100px;margin:0 auto;padding:16px 16px 60px}
+.mhead{margin-bottom:14px}
+.mteams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin:14px 0 6px}
+.mteam{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.mteam b{font:700 20px var(--display);text-transform:uppercase;letter-spacing:.02em}
+.badge.big{width:52px;height:52px;border-radius:14px;font-size:15px}
+.mscore{font:800 44px/1 var(--display);text-align:center;min-width:3ch}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:14px}
+.msec{margin-bottom:14px}
+.mgrid .msec{margin-bottom:0}
+table.mt td{vertical-align:middle}
+.pbarcell{display:inline-block;width:60px;height:6px;border-radius:99px;background:var(--surface2);margin-right:8px;vertical-align:middle;overflow:hidden}
+.pbarcell span{display:block;height:100%;background:var(--accent)}
+.bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.mitem{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
+.mitem b{font:700 20px var(--display);color:var(--good);grid-row:span 2;align-self:center}
 </style>
 
 </head>
@@ -191,6 +217,7 @@ tr:last-child td{border-bottom:0}
 </section>
 </div>
 <div class="toast" id="toast">Copied</div>
+<div id="matchbox"></div>
 <div id="livebox" style="display:none;position:fixed;inset:0;background:rgba(5,8,14,.82);overflow-y:auto;z-index:50;padding:0 12px" onclick="if(event.target===this)closeLive()"></div>
 
 <script>
@@ -625,12 +652,12 @@ function gameCard(g,idx){
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
  const line=X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl'}[lg]||'soccer');
- return `<div class="card gcard ${st}">
+ return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openMatch(${idx})" onkeydown="if(event.key==='Enter')openMatch(${idx})" aria-label="Open ${a} vs ${h}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
   ${rows.map(r=>`<div class="trow ${win?(win===r[0]?'win':'lose'):''}"><span class="tname">${badgeHTML(r[0],r[3],r[4])}<b title="${r[0]}">${r[0]}</b>${soc&&r[2]?'<span class="glg" style="font-size:10px">Home</span>':''}</span><span class="score">${r[1]==null?'':r[1]}</span></div>`).join('')}
   <div class="ginfo">${info}</div>${line}${prob}
   ${note?`<div class="gpick">${note}</div>`:''}
-  <div class="gfoot">${st!=='final'&&LCFG[lg]?`<button class="btn" style="padding:7px 13px;font-size:12px" onclick="openLive(${idx})">Live sim</button>`:''}<a href="${href}">Open on Real ↗</a></div></div>`;
+  <div class="gfoot"><span class="gopen">${st==='final'?'See result':'Open simulations'} →</span><a href="${href}" onclick="event.stopPropagation()">Real ↗</a></div></div>`;
 }
 function renderGames(){
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
@@ -640,8 +667,8 @@ function renderGames(){
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  $('p-games').innerHTML=`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">6</div><div class="s">NBA · NFL · UCL · EPL · La Liga · MLS</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
- <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} <b style="color:var(--ink)">Live sim</b> (NBA/NFL) re-simulates the rest of a game from the current score so you can check live odds.</div>
- <div class="ggrid">${f.map(g=>gameCard(g,L.indexOf(g))).join('')||'<div class="hint">No games match this filter.</div>'}</div>`;
+ <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
+ ${f.length?['NBA','NFL','UCL','EPL','La Liga','MLS'].map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm={NBA:'NBA',NFL:'NFL',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'}[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
 const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1']];
@@ -680,7 +707,7 @@ function buildList(){
    let pr=0;if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}if(st==='up'&&p3)pr=p3;
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:p,date:e.date,det,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+    {id:e.id,path:p,date:e.date,det,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
  return list;
 }
 async function pullFeed(){
@@ -711,7 +738,7 @@ async function playerImp(id){
   const st=d.statistics,sp=st.splits[0].stats,g=n=>nnum(sp[st.names.indexOf(n)]),min=g('avgMinutes');
   if(!min){PLAYER[id]=null;return null;}
   const v=(g('avgPoints')+g('avgAssists')+.5*g('avgRebounds')+1.5*g('avgSteals')+g('avgBlocks')-g('avgTurnovers'))/min*36;
-  PLAYER[id]={imp:clamp((v-18)*.35,-3,10),min,ppg:g('avgPoints')};
+  PLAYER[id]={imp:clamp((v-18)*.35,-3,10),min,ppg:g('avgPoints'),reb:g('avgRebounds'),ast:g('avgAssists')};
  }catch(e){PLAYER[id]=null;}
  return PLAYER[id];
 }
@@ -781,6 +808,194 @@ function autoPanel(M,S){
   <div class="hint">Player values come from season averages (points, assists, rebounds, steals, blocks, turnovers per minute) compared with a replacement-level player. Updates every few seconds.</div></div>`;
 }
 function toggleOut(id,on){if(on)LIVE.outs.add(id);else LIVE.outs.delete(id);runLive();}
+
+/* ---------- match page: 100,000 simulations of every market + player props ---------- */
+const ROSTER={};let MATCH=null;
+const NSIM=100000;
+async function nbaRoster(tid){if(ROSTER[tid])return ROSTER[tid];const d=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${tid}/roster`);return ROSTER[tid]=(d&&d.athletes)||[];}
+function gp(rec){if(!rec)return 0;return String(rec).split('-').reduce((s,x)=>s+(parseInt(x)||0),0);}
+function numIn(s,re){const m=String(s||'').replace(/,/g,'').match(re);return m?+m[1]:0;}
+function fitLam(pH,pD,pA){let best=[1.45,1.15],be=1e9;for(let lh=.2;lh<=4.01;lh+=.05)for(let la=.2;la<=4.01;la+=.05){const r=poisRes(lh,la),e=(r[0]-pH)**2+(r[1]-pD)**2+(r[2]-pA)**2;if(e<be){be=e;best=[lh,la];}}return best;}
+function poisRes(lh,la){const ph=[],pa=[];let fh=Math.exp(-lh),fa=Math.exp(-la);for(let k=0;k<11;k++){ph.push(fh);pa.push(fa);fh*=lh/(k+1);fa*=la/(k+1);}let H=0,D=0,A=0;for(let i=0;i<11;i++)for(let j=0;j<11;j++){const p=ph[i]*pa[j];if(i>j)H+=p;else if(i===j)D+=p;else A+=p;}return [H,D,A];}
+function soccerMinute(X,info){const m=String(X.clock||info||'').match(/(\d+)'/);let mi=m?+m[1]:0;if(/half/i.test(info))mi=45;return clamp(mi,0,90);}
+function histQ(h,q){let t=0;for(const c of h)t+=c;let acc=0;for(let i=0;i<h.length;i++){acc+=h[i];if(acc>=q*t)return i;}return h.length-1;}
+function histGE(h,k){let t=0,s=0;for(let i=0;i<h.length;i++){t+=h[i];if(i>=k)s+=h[i];}return t?s/t:0;}
+function addH(h,v){h[Math.min(h.length-1,Math.max(0,Math.round(v)))]++;}
+const MILE={pts:[10,15,20,25,30,35,40],reb:[4,6,8,10,12,15],ast:[2,4,6,8,10,12],pra:[15,20,25,30,35,40,45,50],passYds:[150,200,225,250,275,300,350],passTD:[1,2,3],rushYds:[25,40,50,60,75,100,125],recYds:[25,40,50,60,75,100,125],rec:[2,3,4,5,6,8],td:[1,2],goals:[1,2]};
+const SLAB={pts:'Points',reb:'Rebounds',ast:'Assists',pra:'Pts+Reb+Ast',passYds:'Passing yards',passTD:'Passing TDs',rushYds:'Rushing yards',recYds:'Receiving yards',rec:'Receptions',td:'Anytime TD',goals:'Goals'};
+const LEN={pts:121,reb:41,ast:41,pra:161,passYds:701,passTD:9,rushYds:301,recYds:301,rec:21,td:6,goals:6};
+
+async function openMatch(idx){
+ const g=GAMES.list[idx];if(!g)return;const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
+ MATCH={idx,g,lg,a,h,X};
+ $('matchbox').style.display='block';document.body.style.overflow='hidden';
+ $('matchbox').innerHTML=`<div class="mwrap"><div class="card mhead">${matchHeader(g)}</div><div id="mbody"><div class="card" style="text-align:center;padding:40px"><div class="kpi .l" style="color:var(--mut)">Loading match data and running ${NSIM.toLocaleString()} simulations…</div></div></div></div>`;
+ let sum=null;if(X.id&&X.path)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
+ if(!MATCH||MATCH.idx!==idx)return;
+ MATCH.sum=sum;
+ try{
+  if(st==='final')return renderFinal(sum);
+  const ctx=await buildCtx(g,sum);
+  setTimeout(()=>{const R=runMatchSim(ctx);if(MATCH&&MATCH.idx===idx)renderMatch(ctx,R);},20);
+ }catch(e){$('mbody').innerHTML=`<div class="card">Could not build this match: ${e.message||e}</div>`;}
+}
+function closeMatch(){$('matchbox').style.display='none';document.body.style.overflow='';MATCH=null;}
+function matchHeader(g){
+ const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{},soc=SOCCER.includes(lg);
+ const L=soc?[[h,hs,X.ha,X.ch],[a,as,X.aa,X.ca]]:[[a,as,X.aa,X.ca],[h,hs,X.ha,X.ch]];
+ const pill=st==='live'?'<span class="pill livep">LIVE</span>':st==='final'?'<span class="pill pass">FINAL</span>':'<span class="pill lean">UPCOMING</span>';
+ return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="glg">${lg}</span><div style="display:flex;gap:8px;align-items:center">${pill}<button class="btn ghost" style="padding:6px 12px" onclick="closeMatch()" aria-label="Close">✕</button></div></div>
+ <div class="mteams">${L.map((r,i)=>`<div class="mteam">${badgeHTML(r[0],r[2],r[3]).replace('class="badge"','class="badge big"')}<b>${r[0]}</b>${soc&&i===0?'<span class="glg">Home</span>':''}</div>${i===0?`<div class="mscore">${as==null?'vs':`${L[0][1]} – ${L[1][1]}`}</div>`:''}`).join('')}</div>
+ <div class="ginfo" style="text-align:center">${info}${X.det?` · Line ${X.det}`:X.spread!=null?` · Line ${X.ha||''} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`;
+}
+function leadersHTML(sum){
+ if(!sum||!sum.leaders||!sum.leaders.length)return '';
+ return `<div class="grid2">${sum.leaders.map(T=>`<div class="card"><h3>${(T.team&&T.team.displayName)||''}</h3>${(T.leaders||[]).slice(0,6).map(c=>{const l=(c.leaders||[])[0];return l?`<div class="f"><span>${c.displayName||c.name}</span><span style="font-family:var(--mono);font-size:12px;text-align:right">${l.athlete.displayName} · ${l.displayValue}</span></div>`:'';}).join('')}</div>`).join('')}</div>`;
+}
+function renderFinal(sum){
+ $('mbody').innerHTML=`<div class="top none">This match is over. Here are the leading performers.</div>${leadersHTML(sum)||'<div class="hint">No player details available for this match.</div>'}`;
+}
+async function buildCtx(g,sum){
+ const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{},soc=SOCCER.includes(lg);
+ const ctx={lg,st,a,h,ca:as||0,ch:hs||0,players:[],notes:[]};
+ let spread=X.spread,total=X.total;
+ if(sum){const pc=(sum.pickcenter||[]).find(z=>z&&z.details);if(pc&&!soc){if(total==null&&pc.overUnder!=null)total=+pc.overUnder;if(spread==null){const m=String(pc.details).match(/^([A-Z]+)\s+([-+]?\d+(?:\.\d+)?)$/);if(m)spread=m[1]===X.ha?+m[2]:-m[2];}}}
+ ctx.spread=spread;ctx.total=total;
+ if(soc){
+  let lh=1.45,la=1.15;
+  if(pr&&pr.length===3){[lh,la]=fitLam(pr[1]/100,pr[2]/100,pr[0]/100);ctx.notes.push('Goal rates fitted to the DraftKings 1X2 odds.');}
+  else if(sum&&sum.odds){/* keep defaults */}
+  const mi=st==='live'?soccerMinute(X,info):0;ctx.f=(90-mi)/90;ctx.lamH=lh;ctx.lamA=la;ctx.minute=mi;
+  if(sum&&sum.leaders)for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
+   const gl=(T.leaders||[]).find(c=>/goal/i.test(c.name||''));for(const l of ((gl&&gl.leaders)||[]).slice(0,3)){const m=numIn(l.displayValue,/Matches:\s*(\d+)/),gs=numIn(l.displayValue,/Goals:\s*(\d+)/);if(!m||!gs)continue;
+    ctx.players.push({name:l.athlete.displayName,side,kind:'soc',share:clamp((gs/m)/1.6,.03,.45)});}}
+  return ctx;
+ }
+ const C=LCFG[lg];
+ let mA,mH;
+ if(proj){[mA,mH]=proj;ctx.notes.push('Pregame projection from the Edge Lab model.');}
+ else if(spread!=null&&total){mA=(total+spread)/2;mH=(total-spread)/2;ctx.notes.push('Pregame projection from the DraftKings spread and total.');}
+ else{const ph=pr?pr[1]/100:.55,m=C.sd*invnorm(ph);mA=(C.tot-m)/2;mH=(C.tot+m)/2;ctx.notes.push('Pregame projection estimated from the win-probability forecast.');}
+ ctx.mA=mA;ctx.mH=mH;
+ // time left
+ let left=C.per*C.len;
+ if(st==='live'){const q=Math.min(4,X.period||parseClock(info)[0]||1),[mm,ss]=fixClock(X.clock||parseClock(info)[1]||'0:00').split(':').map(Number);left=Math.max(0,(C.per-q)*C.len+(mm||0)+(ss||0)/60);}
+ ctx.f=left/(C.per*C.len);ctx.left=left;
+ ctx.remA=mA*ctx.f;ctx.remH=mH*ctx.f;
+ if(lg==='NBA'){
+  let S=null;if(sum&&st==='live'){try{S=parseSummary(sum);}catch(e){}}
+  if(S){const prev=LIVE;LIVE={...(LIVE||{}),outs:(LIVE&&LIVE.outs)||new Set(),lastS:S};
+   await Promise.all([...S.away.players,...S.home.players].filter(p=>!p.dnp).map(p=>playerImp(p.id)));
+   const M=liveModel(S,mA,mH,left);ctx.remA=Math.max(0,M.mA);ctx.remH=Math.max(0,M.mH);LIVE=prev;
+   ctx.notes.push('Live: blends tonight’s pace and shooting with the pregame view, and adjusts for who is on the floor and foul trouble.');
+   for(const [side,T] of [['a',S.away],['h',S.home]])for(const p of T.players.filter(p=>!p.dnp)){const q=PLAYER[p.id];if(!q||!q.min)continue;
+    const out=p.ej||p.pf>=6,ft=p.pf>=5,share=out?0:(q.min/48)*(ft?.5:1),remMin=share*left;
+    const bs=(sum.boxscore.players||[]).find(z=>z.team.id===T.id);let cr=0,ca2=0;if(bs){const s0=bs.statistics[0],ai=s0.athletes.find(z=>z.athlete.id===p.id);if(ai){cr=nnum(ai.stats[s0.names.indexOf('REB')]);ca2=nnum(ai.stats[s0.names.indexOf('AST')]);}}
+    ctx.players.push({name:p.name,side,kind:'nba',min:q.min,cur:{pts:p.pts,reb:cr,ast:ca2},rem:{pts:q.ppg/q.min*remMin,reb:q.reb/q.min*remMin,ast:q.ast/q.min*remMin},tag:out?'out':ft?'foul trouble':p.active?'on floor':''});}
+  }else if(X.aid&&X.hid){
+   for(const [side,tid] of [['a',X.aid],['h',X.hid]]){const ros=await nbaRoster(tid);
+    const list=ros.map(r=>({id:r.id,name:r.shortName||r.displayName,inj:((r.injuries||[])[0]||{}).status||''})).filter(r=>!/^out$/i.test(r.inj));
+    await Promise.all(list.map(r=>playerImp(r.id)));
+    const top=list.filter(r=>PLAYER[r.id]&&PLAYER[r.id].min>=12).sort((p,q)=>PLAYER[q.id].min-PLAYER[p.id].min).slice(0,8);
+    const tm=side==='a'?mA:mH,scale=Math.sqrt(tm/114);
+    for(const r of top){const q=PLAYER[r.id],fac=/day|quest|doubt/i.test(r.inj)?.5:1;ctx.players.push({name:r.name,side,kind:'nba',min:q.min,cur:{pts:0,reb:0,ast:0},rem:{pts:q.ppg*scale*fac*ctx.f,reb:q.reb*fac*ctx.f,ast:q.ast*scale*fac*ctx.f},tag:fac<1?r.inj:''});}}
+   ctx.notes.push('Players: season averages; injured players removed, questionable players at half minutes.');
+  }
+ }
+ if(lg==='NFL'&&sum&&sum.leaders){
+  for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
+   const games=Math.max(1,gp(side==='a'?X.recA:X.recH)),cat=n=>(T.leaders||[]).find(c=>c.name===n),L=n=>{const c=cat(n);return c&&c.leaders&&c.leaders[0];};
+   const tm=side==='a'?mA:mH;const f=ctx.f;
+   const ps=L('passingYards');if(ps)ctx.players.push({name:ps.athlete.displayName,side,kind:'qb',tm,y:numIn(ps.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ps.displayValue,/([\d.]+)\s*TD/)/games*f});
+   const ru=L('rushingYards');if(ru)ctx.players.push({name:ru.athlete.displayName,side,kind:'rb',tm,y:numIn(ru.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ru.displayValue,/([\d.]+)\s*TD/)/games*f});
+   const re=L('receivingYards');if(re)ctx.players.push({name:re.athlete.displayName,side,kind:'wr',tm,y:numIn(re.displayValue,/([\d.]+)\s*YDS/)/games*f,r:numIn(re.displayValue,/([\d.]+)\s*REC/)/games*f,t:numIn(re.displayValue,/([\d.]+)\s*TD/)/games*f});}
+  ctx.notes.push(st==='live'?'Player props show the rest of the game only (yards still to come).':'Players: each team’s season leaders, per game.');
+ }
+ return ctx;
+}
+function runMatchSim(ctx){
+ const n=NSIM,soc=SOCCER.includes(ctx.lg),A=new Int16Array(n),H=new Int16Array(n),KA=new Float32Array(n),KH=new Float32Array(n);
+ if(soc){for(let i=0;i<n;i++){const ga=rpois(ctx.lamA*ctx.f),gh=rpois(ctx.lamH*ctx.f);A[i]=ctx.ca+ga;H[i]=ctx.ch+gh;KA[i]=ga;KH[i]=gh;}}
+ else if(ctx.lg==='NBA'){const rf=Math.sqrt(Math.max(ctx.f,1e-4));
+  for(let i=0;i<n;i++){const c=5*rf*randn(),ra=Math.max(0,ctx.remA+c+9*rf*randn()),rh=Math.max(0,ctx.remH+c+9*rf*randn());let a=ctx.ca+Math.round(ra),h=ctx.ch+Math.round(rh);
+   while(a===h){a+=Math.max(0,Math.round(11+3.2*randn()));h+=Math.max(0,Math.round(11+3.2*randn()));}A[i]=a;H[i]=h;KA[i]=ctx.remA>1?ra/ctx.remA:1;KH[i]=ctx.remH>1?rh/ctx.remH:1;}}
+ else{const probs=m=>{const k=(m/11)/2.06;return [Math.min(.62,.23*k),Math.min(.3,.15*k)];};
+  const drv=(D,pT,pF)=>{let s=0;for(let d=0;d<D;d++){const r=Math.random();if(r<pT){const q=Math.random();s+=q<.03?6:q<.06?8:7;}else if(r<pT+pF)s+=3;}return s;};
+  const fullA=ctx.mA,fullH=ctx.mH,[aT,aF]=probs(fullA),[hT,hF]=probs(fullH),pOT=clamp(.5+(fullA-fullH)/40,.2,.8);
+  for(let i=0;i<n;i++){const D=Math.max(0,Math.round(11*ctx.f+1.2*Math.sqrt(ctx.f)*randn()));const ra=drv(D,aT,aF),rh=drv(D,hT,hF);let a=ctx.ca+ra,h=ctx.ch+rh;
+   if(a===h){const pts=Math.random()<.55?3:6;if(Math.random()<pOT)a+=pts;else h+=pts;}A[i]=a;H[i]=h;KA[i]=ctx.remA>.5?ra/ctx.remA:1;KH[i]=ctx.remH>.5?rh/ctx.remH:1;}}
+ // players
+ const P=ctx.players.map(p=>{const o={p,h:{}};const keys=p.kind==='nba'?['pts','reb','ast','pra']:p.kind==='qb'?['passYds','passTD']:p.kind==='rb'?['rushYds','td']:p.kind==='wr'?['recYds','rec','td']:['goals'];for(const k of keys)o.h[k]=new Uint32Array(LEN[k]);return o;});
+ for(let i=0;i<n;i++){
+  for(const o of P){const p=o.p,k=p.side==='a'?KA[i]:KH[i];
+   if(p.kind==='nba'){const kk=clamp(k,.3,2.2),mp=p.rem.pts*kk,pt=p.cur.pts+Math.max(0,mp+Math.sqrt(2.6*Math.max(mp,.01))*randn()),rb=p.cur.reb+rnegbin(p.rem.reb*Math.sqrt(kk),1.35),as2=p.cur.ast+rnegbin(p.rem.ast*kk,1.45);
+    addH(o.h.pts,pt);addH(o.h.reb,rb);addH(o.h.ast,as2);addH(o.h.pra,pt+rb+as2);}
+   else if(p.kind==='soc'){const G=Math.round(k);let s=0;for(let j=0;j<G;j++)if(Math.random()<p.share)s++;addH(o.h.goals,s);}
+   else{const kk=clamp(k,.2,2.5),ky=Math.pow(kk,.7);
+    if(p.kind==='qb'){addH(o.h.passYds,Math.max(0,p.y*ky+.27*p.y*randn()));addH(o.h.passTD,rpois(p.t*kk));}
+    else if(p.kind==='rb'){addH(o.h.rushYds,Math.max(0,p.y*ky+.45*p.y*randn()));addH(o.h.td,rpois(p.t*kk));}
+    else{addH(o.h.recYds,Math.max(0,p.y*ky+.55*p.y*randn()));addH(o.h.rec,rnegbin(Math.max(.05,p.r*ky),1.25));addH(o.h.td,rpois(p.t*kk));}}}
+ }
+ return {A,H,P,n};
+}
+function pctCell(p){return `<td><div class="pbarcell"><span style="width:${(p*100).toFixed(1)}%"></span></div><b>${(p*100).toFixed(1)}%</b></td>`;}
+function renderMatch(ctx,R){
+ const {A,H,n}=R,soc=SOCCER.includes(ctx.lg),a=ctx.a,h=ctx.h;
+ let hw=0,aw=0,dr=0,sm=0,st=0;const sc=new Map();
+ for(let i=0;i<n;i++){const m=H[i]-A[i];sm+=m;st+=H[i]+A[i];if(m>0)hw++;else if(m<0)aw++;else dr++;if(soc||ctx.lg==='NFL'){const k=H[i]+'-'+A[i];sc.set(k,(sc.get(k)||0)+1);}}
+ const fm=sm/n,ft=st/n,eA=(ft-fm)/2,eH=(ft+fm)/2;
+ const P=x=>x/n,share=(fn)=>{let c=0;for(let i=0;i<n;i++)if(fn(H[i],A[i]))c++;return c/n;};
+ const most=[];
+ // result
+ let html=`<div class="kpis"><div class="kpi"><div class="l">Projected score</div><div class="v">${soc?`${eH.toFixed(1)} – ${eA.toFixed(1)}`:`${eA.toFixed(0)} – ${eH.toFixed(0)}`}</div><div class="s">${soc?`${h} – ${a}`:`${a} @ ${h}`}</div></div>
+ <div class="kpi"><div class="l">${h} win</div><div class="v">${(P(hw)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(hw))}</div></div>
+ ${soc?`<div class="kpi"><div class="l">Draw</div><div class="v">${(P(dr)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(dr))}</div></div>`:`<div class="kpi"><div class="l">Fair spread (${h})</div><div class="v">${-fm>0?'+':''}${(-fm).toFixed(1)}</div><div class="s">${ctx.spread!=null?'book '+(ctx.spread>0?'+':'')+ctx.spread:'no book line'}</div></div>`}
+ <div class="kpi"><div class="l">${a} win</div><div class="v">${(P(aw)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(aw))}</div></div></div>`;
+ html+=`<div class="top none" style="margin-bottom:14px"><b style="color:var(--ink)">${NSIM.toLocaleString()} simulations</b>${ctx.st==='live'?' from the current score':' of the full match'}. ${ctx.notes.join(' ')}</div>`;
+ const T=(title,head,rows)=>`<div class="card msec"><h3>${title}</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
+ const secs=[];
+ if(soc){
+  const dc1=P(hw+dr),dc2=P(aw+dr),dc3=P(hw+aw),dnbH=hw/(hw+aw||1);
+  secs.push(T('Match result',['Market','Pick','Chance','Fair odds'],[['1X2',h+' win',P(hw)],['1X2','Draw',P(dr)],['1X2',a+' win',P(aw)],['Double chance',h+' or draw',dc1],['Double chance',a+' or draw',dc2],['Double chance',h+' or '+a,dc3],['Draw no bet',h,dnbH],['Draw no bet',a,1-dnbH]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td>${pctCell(r[2])}<td>${amer(r[2])}</td></tr>`)));
+  const lines=[.5,1.5,2.5,3.5,4.5,5.5].map(L=>{const o=share((x,y)=>x+y>L);return `<tr><td>Total goals</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;});
+  const btts=share((x,y)=>x>0&&y>0);
+  secs.push(T('Goals: over / under',['Market','Line','Over','Under'],[...lines,`<tr><td>Both teams score</td><td>Yes / No</td>${pctCell(btts)}${pctCell(1-btts)}</tr>`,...[.5,1.5,2.5].map(L=>{const o=share((x)=>x>L);return `<tr><td>${h} goals</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;}),...[.5,1.5,2.5].map(L=>{const o=share((x,y)=>y>L);return `<tr><td>${a} goals</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;})]));
+  secs.push(T('Handicap ('+h+')',['Line',h+' covers',a+' covers'],[-1.5,-.5,.5,1.5].map(L=>{const c=share((x,y)=>x-y+L>0);return `<tr><td>${h} ${L>0?'+':''}${L}</td>${pctCell(c)}${pctCell(1-c)}</tr>`;})));
+  const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]).slice(0,8);
+  secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance','Fair odds'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`)));
+  [[btts,'Both teams score'],[P(hw+dr),h+' or draw'],[P(aw+dr),a+' or draw']].forEach(([p,t])=>most.push({t,p}));
+  [.5,1.5,2.5,3.5].forEach(L=>{const o=share((x,y)=>x+y>L);most.push({t:'Over '+L+' goals',p:o},{t:'Under '+L+' goals',p:1-o});});
+ }else{
+  const C=LCFG[ctx.lg],base=ctx.spread!=null?ctx.spread:Math.round(-fm*2)/2,step=ctx.lg==='NBA'?[-9,-6,-3,0,3,6,9]:[-7,-3,0,3,7];
+  const sl=[...new Set(step.map(d=>base+d))].sort((p,q)=>p-q);
+  secs.push(T('Spread',['Line',h+' covers',a+' covers'],sl.map(L=>{let c=0,pu=0;for(let i=0;i<n;i++){const v=H[i]-A[i]+L;if(v>0)c++;else if(v===0)pu++;}const pc=c/(n-pu||1);return `<tr${L===ctx.spread?' class="bookrow"':''}><td>${h} ${L>0?'+':''}${L}${L===ctx.spread?' <span class="pill pass">book</span>':''}</td>${pctCell(pc)}${pctCell(1-pc)}</tr>`;})));
+  const tb=ctx.total!=null?ctx.total:Math.round(ft*2)/2,ts=ctx.lg==='NBA'?[-10,-7.5,-5,-2.5,0,2.5,5,7.5,10]:[-7,-4,-2,0,2,4,7];
+  secs.push(T('Total points',['Line','Over','Under'],ts.map(d=>{const L=tb+d;let o=0,pu=0;for(let i=0;i<n;i++){const v=H[i]+A[i];if(v>L)o++;else if(v===L)pu++;}const po=o/(n-pu||1);if(Math.abs(po-.5)<.42)most.push({t:(po>.5?'Over ':'Under ')+L+' total points',p:Math.max(po,1-po)});return `<tr${d===0&&ctx.total!=null?' class="bookrow"':''}><td>${L}${d===0&&ctx.total!=null?' <span class="pill pass">book</span>':''}</td>${pctCell(po)}${pctCell(1-po)}</tr>`;})));
+  const tt=(arr,nm,ex)=>{const L=Math.round(ex)-.5;return [L-5,L,L+5].map(x=>{let o=0;for(let i=0;i<n;i++)if(arr[i]>x)o++;return `<tr><td>${nm}</td><td>${x}</td>${pctCell(o/n)}${pctCell(1-o/n)}</tr>`;});};
+  secs.push(T('Team totals',['Team','Line','Over','Under'],[...tt(A,a,eA),...tt(H,h,eH)]));
+  const bands=ctx.lg==='NBA'?[[1,5],[6,10],[11,15],[16,99]]:[[1,3],[4,7],[8,14],[15,99]];
+  const bandRows=[];for(const [s,nm] of [[1,h],[-1,a]])for(const [lo,hi] of bands){let c=0;for(let i=0;i<n;i++){const m=(H[i]-A[i])*s;if(m>=lo&&m<=hi)c++;}bandRows.push(`<tr><td>${nm} by ${hi>90?lo+'+':lo+'–'+hi}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`);}
+  secs.push(T('Winning margin',['Result','Chance','Fair odds'],bandRows));
+  if(ctx.lg==='NFL'){const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]).slice(0,6);secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance','Fair odds'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`)));}
+  most.push({t:h+' win',p:P(hw)},{t:a+' win',p:P(aw)});
+ }
+ // player props
+ const propRows=[];
+ for(const o of R.P){const p=o.p,tn=p.side==='a'?a:h;
+  for(const [k,hh] of Object.entries(o.h)){const med=histQ(hh,.5),lo=histQ(hh,.1),hi=histQ(hh,.9);let tot=0;for(const c of hh)tot+=c;let mean=0;for(let i=0;i<hh.length;i++)mean+=i*hh[i];mean/=tot||1;
+   const ms=(MILE[k]||[]).map(m=>[m,histGE(hh,m)]).filter(([m,pp])=>pp>.03&&pp<.97);
+   const best=ms.filter(([m,pp])=>pp>=.6).pop();if(best)most.push({t:`${p.name} ${k==='td'||k==='goals'?(best[0]===1?'to score':best[0]+'+ '+SLAB[k].toLowerCase()):best[0]+'+ '+SLAB[k].toLowerCase()}`,p:best[1],prop:1});
+   propRows.push(`<tr><td><b>${p.name}</b><div class="hint" style="margin:0">${tn}${p.tag?' · '+p.tag:''}</div></td><td>${SLAB[k]}</td><td><b>${k==='td'||k==='goals'?(histGE(hh,1)*100).toFixed(0)+'%':mean.toFixed(1)}</b></td><td>${k==='td'||k==='goals'?'—':lo+'–'+hi}</td><td style="white-space:normal;text-align:left">${ms.map(([m,pp])=>`<span class="pill ${pp>=.6?'bet':pp>=.4?'lean':'pass'}" style="margin:2px">${k==='td'||k==='goals'?(m===1?'Anytime':m+'+'):m+'+'} ${(pp*100).toFixed(0)}%</span>`).join('')}</td></tr>`);}
+ }
+ const mostTop=most.filter(m=>m.p>=.55&&m.p<.97).sort((p,q)=>q.p-p.p).slice(0,12);
+ const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
+ const propsHTML=propRows.length?`<div class="card msec"><h3>Player props · ${NSIM.toLocaleString()} sims each</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Stat</th><th>Projection</th><th>80% range</th><th style="text-align:left">Chance to reach</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':'Player props need the live feed. Open Edge Lab from the website link.'}</div></div>`;
+ const oddsBtn=LCFG[ctx.lg]?`<div class="run"><button class="btn ghost" onclick="openLive(${MATCH.idx})">Compare with my sportsbook odds</button></div>`:'';
+ $('mbody').innerHTML=html+mostHTML+`<div class="mgrid">${secs.join('')}</div>`+propsHTML+oddsBtn+(MATCH&&MATCH.sum&&ctx.st!=='live'?`<h3 class="glg" style="margin:18px 0 8px">Season leaders</h3>`+leadersHTML(MATCH.sum):'');
+ if(ctx.st==='live'){clearTimeout(MATCH.t);MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},15000);}
+}
+async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
 
 /* ---------- copy / tabs ---------- */
 function copyOut(s){
