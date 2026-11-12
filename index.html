@@ -147,15 +147,22 @@ table.mt td{vertical-align:middle}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
 .catbar{position:sticky;top:0;z-index:20;margin:0 0 16px;padding:6px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
-.cats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.cats{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--mut);font:700 13px var(--body);padding:10px 4px;border-radius:13px;cursor:pointer;min-width:0;transition:background .15s,color .15s}
 .cat .ci{font-size:22px;line-height:1}
 .cat:hover{color:var(--ink);background:var(--surface2)}
 .cat.on{background:var(--grad);color:#fff;box-shadow:0 6px 18px rgba(244,63,107,.28)}
-@media(max-width:560px){.cats{grid-template-columns:repeat(3,1fr)}.cat{font-size:12px;padding:9px 2px}}
+@media(max-width:560px){.cats{grid-template-columns:repeat(4,1fr)}.cat{font-size:12px;padding:9px 2px}}
 @media (prefers-reduced-motion:reduce){.cat{transition:none}}
 .fcsub{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
-.fcchip{border:0;background:none;color:var(--mut);font:600 13px var(--body);padding:7px 12px;border-radius:9px;cursor:pointer}
+.fcchip img{width:20px;height:20px;object-fit:contain;flex:none;background:#fff;border-radius:50%;padding:2px}
+.fcchip .globe{font-size:18px;line-height:1}
+#searchbox{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:45}
+.sitem{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:inherit;padding:10px 8px;border-radius:12px;cursor:pointer;border-bottom:1px solid var(--line)}
+.sitem:hover{background:var(--surface2)}
+.sitem img{width:40px;height:40px;object-fit:contain;flex:none;border-radius:10px}
+.sph{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--grad);color:#fff;font-weight:800;flex:none}
+.fcchip{display:inline-flex;align-items:center;gap:7px;border:0;background:none;color:var(--mut);font:600 13px var(--body);padding:7px 12px;border-radius:9px;cursor:pointer}
 .fcchip:hover{color:var(--ink);background:var(--surface2)}
 .fcchip.on{background:var(--grad);color:#fff}
 .dstrip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:12px;scrollbar-width:thin}
@@ -237,6 +244,7 @@ table.mt td{vertical-align:middle}
 </div>
 <div class="toast" id="toast">Copied</div>
 <div id="matchbox"></div>
+<div id="searchbox"></div>
 <div id="livebox" style="display:none;position:fixed;inset:0;background:rgba(5,8,14,.82);overflow-y:auto;z-index:50;padding:0 12px" onclick="if(event.target===this)closeLive()"></div>
 
 <script>
@@ -666,6 +674,7 @@ function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
  return '';}
 function inSport(g,s){return s==='All'||(s==='Special'?!!specialWhy(g):s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
 const CATS=['FC','NBA','MLB','NFL','NHL','Tennis'];
+const LGLOGO={EPL:23,'La Liga':15,'Serie A':12,Bundesliga:10,'Ligue 1':9,UCL:2,MLS:19};
 const FCSUB=[['EPL','Premier League'],['La Liga','La Liga'],['Serie A','Serie A'],['Bundesliga','Bundesliga'],['Ligue 1','Ligue 1'],['INTL','International'],['UCL','Champions League'],['MLS','MLS']];let gFC='EPL';
 const SNAP=GAMES.list.slice();
 let gSport='FC',gStat='All',FEED_ON=false;
@@ -698,7 +707,7 @@ function gameCard(g,idx){
 let gNext='All',gView='games';
 const CICON={All:'🏟️',FC:'⚽',NBA:'🏀',MLB:'⚾',NFL:'🏈',NHL:'🏒',Tennis:'🎾',Special:'⭐'};
 function topBar(){const cur=gView==='next'?gNext:gSport;
- return `<div class="catbar"><div class="cats">${CATS.map(s=>`<button class="cat${cur===s?' on':''}" onclick="${gView==='next'?`gNext='${s}'`:`gSport='${s}';gDate=null`};renderGames()"><span class="ci">${CICON[s]||''}</span><span>${s}</span></button>`).join('')}</div>
+ return `<div class="catbar"><div class="cats">${CATS.map(s=>`<button class="cat${cur===s?' on':''}" onclick="${gView==='next'?`gNext='${s}'`:`gSport='${s}';gDate=null`};renderGames()"><span class="ci">${CICON[s]||''}</span><span>${s}</span></button>`).join('')}<button class="cat" onclick="openSearch()" aria-label="Search"><span class="ci">🔍</span><span>Search</span></button></div>
 </div>`;}
 function viewToggle(){const b=(v,l)=>`<button class="btn ${gView===v?'':'ghost'}" style="padding:9px 18px" onclick="gView='${v}';renderGames()">${l}</button>`;return `<div style="display:flex;gap:8px;margin-bottom:14px">${b('games','Games')}${b('next','Next matches')}</div>`;}
 function renderNext(){
@@ -722,7 +731,7 @@ function renderByDate(){
  const sports=CATS,chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
  const lgs=gSport==='FC'?(gFC==='INTL'?INTL:[gFC]):gSport==='Special'?LGORDER:[gSport],nm=LGNAME;
- $('p-games').innerHTML=topBar()+` ${gSport==='FC'?`<div class="fcsub">${FCSUB.map(([k,l])=>`<button class="fcchip${gFC===k?' on':''}" onclick="gFC='${k}';gDate=null;renderGames()">${l}</button>`).join('')}</div>`:''}${gSport==='Special'?'<div class="hint" style="margin:-4px 0 10px">Picked automatically: every EuroLeague game, national-TV NBA/NFL/NHL/MLB games, big-club and top-nation soccer, and tennis Finals, Slams and late rounds.</div>':''}
+ $('p-games').innerHTML=topBar()+` ${gSport==='FC'?`<div class="fcsub">${FCSUB.map(([k,l])=>`<button class="fcchip${gFC===k?' on':''}" onclick="gFC='${k}';gDate=null;renderGames()">${LGLOGO[k]?`<img src="https://a.espncdn.com/i/leaguelogos/soccer/500/${LGLOGO[k]}.png" alt="">`:'<span class="globe">🌐</span>'}${l}</button>`).join('')}</div>`:''}${gSport==='Special'?'<div class="hint" style="margin:-4px 0 10px">Picked automatically: every EuroLeague game, national-TV NBA/NFL/NHL/MLB games, big-club and top-nation soccer, and tennis Finals, Slams and late rounds.</div>':''}
  <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
  ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
  const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
@@ -1311,6 +1320,48 @@ function renderAlt(ctx,R){
  <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
  <div class="hint">${ctx.notes.join(' ')}</div>`;
 }
+
+/* ---------- search: leagues, teams, players + their stats (ESPN) ---------- */
+let SQT=null;
+function openSearch(){$('searchbox').style.display='block';document.body.style.overflow='hidden';
+ $('searchbox').innerHTML=`<div class="mwrap"><div class="card mhead"><div style="display:flex;gap:10px;align-items:center"><span style="font-size:20px">🔍</span><input id="sq" type="search" placeholder="Search leagues, teams or players…" autocomplete="off" style="flex:1;width:auto;text-align:left;font:600 16px var(--body);padding:12px 14px"><button class="btn ghost" style="padding:8px 12px" onclick="closeSearch()" aria-label="Close">✕</button></div></div><div id="sres"><div class="hint">Try “Haaland”, “Lakers”, “Premier League”, “Shai”, “Real Madrid”…</div></div></div>`;
+ const q=$('sq');q.focus();q.oninput=()=>{clearTimeout(SQT);SQT=setTimeout(()=>runSearch(q.value.trim()),280);};}
+function closeSearch(){$('searchbox').style.display='none';document.body.style.overflow='';}
+async function runSearch(q){if(q.length<2){$('sres').innerHTML='<div class="hint">Type at least 2 letters.</div>';return;}
+ const d=await getJSON(`https://site.web.api.espn.com/apis/search/v2?query=${encodeURIComponent(q)}&limit=8&type=player,team,league`);
+ if(!d||!d.results){$('sres').innerHTML='<div class="hint">Search isn’t available right now.</div>';return;}
+ const lab={player:'Players',team:'Teams',league:'Leagues'};
+ const groups=d.results.filter(g=>lab[g.type]&&(g.contents||[]).length);
+ $('sres').innerHTML=groups.length?groups.map(g=>`<div class="card msec"><h3>${lab[g.type]}</h3>${g.contents.map(c=>{const img=(c.image&&(c.image.default||c.image.defaultDark))||'';const arg=encodeURIComponent(JSON.stringify({t:c.type,uid:c.uid,s:c.sport,l:c.defaultLeagueSlug,n:c.displayName,img}));
+  return `<button class="sitem" onclick="openEntity('${arg}')">${img?`<img src="${img}" alt="" loading="lazy">`:'<span class="sph">'+(c.displayName||'?')[0]+'</span>'}<span><b>${c.displayName}</b><span class="hint" style="margin:0;display:block">${c.subtitle||''} · ${(c.sport||'').replace(/^\w/,x=>x.toUpperCase())}</span></span><span class="gopen" style="margin-left:auto">Stats →</span></button>`;}).join('')}</div>`).join(''):'<div class="hint">No results.</div>';}
+const idFrom=(uid,k)=>{const m=String(uid||'').match(new RegExp(k+':(\\d+)'));return m?m[1]:null;};
+async function openEntity(arg){const E=JSON.parse(decodeURIComponent(arg));$('sres').innerHTML='<div class="card" style="text-align:center;padding:30px">Loading…</div>';
+ const back=`<button class="btn ghost" style="margin-bottom:12px" onclick="runSearch($('sq').value.trim())">← Back to results</button>`;
+ try{if(E.t==='player')return $('sres').innerHTML=back+await playerView(E);if(E.t==='team')return $('sres').innerHTML=back+await teamView(E);return $('sres').innerHTML=back+await leagueView(E.s,E.l,E.n);}
+ catch(e){$('sres').innerHTML=back+'<div class="hint">Couldn’t load stats for this one.</div>';}}
+function statTable(st){if(!st||!st.labels||!(st.splits||[]).length)return '<div class="hint">No season stats available.</div>';
+ return `<div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Season</th>${st.labels.map((l,i)=>`<th title="${(st.displayNames||[])[i]||''}">${l}</th>`).join('')}</tr></thead><tbody>${st.splits.map(s=>`<tr><td>${s.displayName}</td>${(s.stats||[]).map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
+async function playerView(E){const id=idFrom(E.uid,'a'),base=`https://site.web.api.espn.com/apis/common/v3/sports/${E.s}/${E.l}/athletes/${id}`;
+ const [bio,ov]=await Promise.all([getJSON(base),getJSON(base+'/overview')]);const a=(bio&&bio.athlete)||{};
+ const img=(a.headshot&&a.headshot.href)||E.img,team=a.team||{},ng=ov&&ov.nextGame;
+ const facts=[a.position&&a.position.displayName,team.displayName,a.age?a.age+' years':'',a.displayHeight,a.citizenship].filter(Boolean);
+ return `<div class="card msec"><div style="display:flex;gap:14px;align-items:center">${img?`<img src="${img}" alt="" style="width:72px;height:72px;border-radius:16px;object-fit:cover;background:var(--surface2)">`:''}<div><h2 class="ptitle">${a.displayName||E.n}</h2><div class="hint" style="margin:4px 0 0">${facts.join(' · ')}</div></div></div></div>
+ <div class="card msec"><h3>Season stats</h3>${statTable(ov&&ov.statistics)}</div>
+ ${ng&&ng.displayName?`<div class="card msec"><h3>Next game</h3><div>${ng.displayName}${ng.date?' · '+new Date(ng.date).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}</div></div>`:''}`;}
+async function teamView(E){const id=idFrom(E.uid,'t'),d=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${E.s}/${E.l}/teams/${id}`),t=(d&&d.team)||{};
+ const logo=(t.logos&&t.logos[0]&&t.logos[0].href)||E.img,rec=((t.record&&t.record.items)||[])[0],ne=(t.nextEvent||[])[0];
+ const recStats=rec&&rec.stats?rec.stats.filter(s=>/^(wins|losses|ties|points|pointsFor|pointsAgainst|pointDifferential|winPercent|streak|gamesPlayed)$/.test(s.name)).map(s=>`<div class="kpi"><div class="l">${s.name.replace(/([A-Z])/g,' $1')}</div><div class="v">${s.displayValue??s.value}</div></div>`).join(''):'';
+ return `<div class="card msec"><div style="display:flex;gap:14px;align-items:center">${logo?`<img src="${logo}" alt="" style="width:72px;height:72px;object-fit:contain">`:''}<div><h2 class="ptitle">${t.displayName||E.n}</h2><div class="hint" style="margin:4px 0 0">${[rec&&rec.summary?'Record '+rec.summary:'',t.standingSummary].filter(Boolean).join(' · ')}</div></div></div></div>
+ ${recStats?`<div class="kpis">${recStats}</div>`:''}
+ ${ne?`<div class="card msec"><h3>Next game</h3><div>${ne.name||ne.shortName} · ${new Date(ne.date).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div></div>`:''}
+ ${await leagueView(E.s,E.l,'',t.id)}`;}
+async function leagueView(sport,league,name,hl){const d=await getJSON(`https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings`);
+ const groups=d&&(d.children&&d.children.length?d.children:[d]);if(!groups||!groups.length)return '<div class="hint">No standings available.</div>';
+ const want=['gamesPlayed','wins','ties','losses','otLosses','winPercent','gamesBehind','pointDifferential','points'];
+ return groups.map(g=>{const en=(g.standings&&g.standings.entries)||[];if(!en.length)return '';const have=want.filter(w=>en[0].stats.some(s=>s.name===w));
+  const ab={gamesPlayed:'GP',wins:'W',ties:'D',losses:'L',otLosses:'OTL',winPercent:'PCT',gamesBehind:'GB',pointDifferential:'DIFF',points:'PTS'};
+  const rows=en.slice().sort((p,q)=>{const v=(e,n)=>{const s=e.stats.find(x=>x.name===n);return s?+s.value:0;};return have.includes('points')&&sport==='soccer'?v(q,'points')-v(p,'points')||v(q,'pointDifferential')-v(p,'pointDifferential'):v(q,'winPercent')-v(p,'winPercent');});
+  return `<div class="card msec"><h3>${g.name||name||'Standings'}</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>#</th><th>Team</th>${have.map(w=>`<th>${ab[w]}</th>`).join('')}</tr></thead><tbody>${rows.map((e,i)=>{const lg=e.team.logos&&e.team.logos[0]&&e.team.logos[0].href;return `<tr${hl&&String(e.team.id)===String(hl)?' class="bookrow"':''}><td>${i+1}</td><td style="display:flex;gap:8px;align-items:center">${lg?`<img src="${lg}" alt="" style="width:22px;height:22px;object-fit:contain">`:''}${e.team.displayName}</td>${have.map(w=>{const s=e.stats.find(x=>x.name===w);return `<td>${s?(s.displayValue??s.value):''}</td>`;}).join('')}</tr>`;}).join('')}</tbody></table></div></div>`;}).join('');}
 
 /* ---------- copy / tabs ---------- */
 function copyOut(s){
