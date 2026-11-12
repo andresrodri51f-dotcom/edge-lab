@@ -2322,6 +2322,7 @@ updChip();setInterval(()=>{try{RW.settle();}catch(e){}},30000);
 /* ================= LINEUPS on sport fields + player props sheet + smooth UI motion ================= */
 (function(){
 const $l=id=>document.getElementById(id);
+const LU={};window.LU=LU;let REG=[],CUR=null,TEAM='a';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const last=n=>{const p=String(n||'').split(' ');return p.length>1?p.slice(1).join(' '):n;};
 
@@ -2479,7 +2480,7 @@ LU.predict=async function(g,sum){const lg=g[0],X=g[10]||{};if(!X.path||!X.aid||!
  CUR={g,L:{kind,teams:out,predicted:true,injN}};return `<div class="card msec" id="lucard">${luBody()}</div>`;};
 
 /* ---------- renderers ---------- */
-const LU={};window.LU=LU;let REG=[],CUR=null,TEAM='a';
+
 LU.reg=(p,side)=>{REG.push({...p,side});return REG.length-1;};
 LU.html=function(g,sum){let L=null;try{L=getLineup(g,sum);}catch(e){L=null;}CUR=L?{g,L}:null;if(!L)return '';
  const live=g[1]!=='up';return `<div class="card msec" id="lucard">${luBody()}</div>`;};
