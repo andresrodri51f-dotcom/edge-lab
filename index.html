@@ -1405,7 +1405,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();
 /* ---------- NHL, MLB and tennis: simulation + match page ---------- */
 const ALT=['NHL','MLB','Tennis','UFC'];
 function liveTick(K,fn,ms){if(!MATCH)return;clearTimeout(MATCH.t);MATCH.t=setTimeout(()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;const g2=GAMES.list.find(z=>gameKey(z)===K);if(!g2)return;MATCH.g=g2;MATCH.idx=GAMES.list.indexOf(g2);const hd=$('matchbox').querySelector('.mhead');if(hd)hd.innerHTML=matchHeader(g2);fn(g2);},ms);}
-function altRun(g,K){const ctx=altCtx(g);setTimeout(()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;const R=altSim(ctx);renderAlt(ctx,R);if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
+function altRun(g,K){const ctx=altCtx(g);setTimeout(async()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;if(ctx.lg==='NHL'){try{const X=g[10]||{};if(g[1]==='live'&&X.id&&X.path){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(s2&&MATCH)MATCH.sum=s2;}ctx.pl=await nhlPlayers(g,MATCH&&MATCH.sum);}catch(e){ctx.pl=null;}if(!MATCH||gameKey(MATCH.g)!==K)return;}const R=altSim(ctx);renderAlt(ctx,R);if(ctx.pl&&ctx.pl.length){try{$('mbody').insertAdjacentHTML('beforeend',nhlProps(ctx,R));}catch(e){}}if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
 let TEN={days:{},cur:{}};
 async function fetchTennis(full){
  const now=Date.now();
@@ -1445,6 +1445,39 @@ function altSim(ctx){
   if(h===a){ot++;if(Math.random()<ctx.lamH/(ctx.lamH+ctx.lamA))h++;else a++;}H[i]=h;A[i]=a;}
  return {H,A,n,ot:ot/n};
 }
+/* ---------- NHL player props: season per-game stats (ESPN) + team goals from the game sim ---------- */
+let NHLST=null;
+async function nhlStats(){if(NHLST)return NHLST;
+ try{const c=JSON.parse(localStorage.getItem('el_nhlst')||'null');if(c&&Date.now()-c.t<6*36e5){NHLST=c.d;return NHLST;}}catch(e){}
+ const d=await getJSON('https://site.web.api.espn.com/apis/common/v3/sports/hockey/nhl/statistics/byathlete?limit=1000');if(!d||!d.athletes)return null;
+ const cn={};(d.categories||[]).forEach(c=>cn[c.name]=c.names||[]);const by={};
+ for(const x of d.athletes){const a=x.athlete||{},v={};for(const c of x.categories||[]){const nm=cn[c.name]||[];(c.totals||[]).forEach((t,i)=>{v[nm[i]]=parseFloat(String(t).replace(/,/g,''))||0;});}
+  const tid=String(a.teamId||'');if(!tid)continue;(by[tid]=by[tid]||[]).push({id:a.id,n:a.displayName,sn:a.shortName||a.displayName,pos:(a.position&&a.position.abbreviation)||'',gp:v.games||0,g:v.goals||0,a:v.assists||0,sh:v.shotsTotal||0,sv:v.saves||0,sa:v.shotsAgainst||0});}
+ NHLST=by;try{localStorage.setItem('el_nhlst',JSON.stringify({t:Date.now(),d:by}));}catch(e){}return by;}
+async function nhlPlayers(g,sum){const X=g[10]||{};if(!X.aid||!X.hid)return null;const by=await nhlStats();if(!by)return null;
+ const cur={};if(sum&&sum.boxscore&&sum.boxscore.players)for(const tp of sum.boxscore.players)for(const cat of tp.statistics||[]){const keys=cat.keys||cat.names||[];for(const at of cat.athletes||[]){const id=at.athlete&&at.athlete.id;if(!id)continue;const c=cur[id]||(cur[id]={});keys.forEach((k,i)=>{const v=parseFloat(String((at.stats||[])[i]||'').replace(/,/g,''));if(!isNaN(v))c[k]=v;});}}
+ const out=[];for(const [side,tid] of [['a',String(X.aid)],['h',String(X.hid)]]){const L=(by[tid]||[]).filter(p=>p.gp>0);if(!L.length)continue;
+  const sk=L.filter(p=>p.pos!=='G'),tg=sk.reduce((s,p)=>s+p.g/p.gp,0)||1,ta=sk.reduce((s,p)=>s+p.a/p.gp,0)||1,tsh=sk.reduce((s,p)=>s+p.sh/p.gp,0);
+  const top=sk.filter(p=>p.gp>=3).sort((p,q)=>(q.g+q.a)/q.gp-(p.g+p.a)/p.gp).slice(0,8);
+  for(const p of top){const c=cur[p.id]||{};out.push({side,kind:'sk',n:p.n,pos:p.pos,gs:(p.g/p.gp)/tg,as:Math.min(.95,1.7*(p.a/p.gp)/ta),spg:p.sh/p.gp,cg:c.goals||0,ca:c.assists||0,csh:c.shotsTotal||c.shots||0});}
+  const gk=L.filter(p=>p.pos==='G'&&p.gp>0).sort((p,q)=>q.gp-p.gp)[0];if(gk)out.push({side,kind:'g',n:gk.n,pos:'G',svpct:gk.sa?gk.sv/gk.sa:.9,teamShots:tsh,csv:(cur[gk.id]||{}).saves||0});}
+ for(const p of out)if(p.kind==='g'){const opp=out.find(q=>q.kind==='g'&&q.side!==p.side);p.oppShots=opp?opp.teamShots:29;}
+ return out;}
+function nhlProps(ctx,R){const {H,A,n}=R,f=ctx.f!=null?ctx.f:1,live=ctx.st==='live',N=Math.min(n,40000),rows=[];
+ const binom=(k,p)=>{let x=0;for(let j=0;j<k;j++)if(Math.random()<p)x++;return x;};
+ for(const p of ctx.pl){const mine=p.side==='h'?H:A,opp=p.side==='h'?A:H,curT=p.side==='h'?ctx.ch:ctx.ca,curO=p.side==='h'?ctx.ca:ctx.ch;
+  if(p.kind==='sk'){const G=new Uint8Array(N),As=new Uint8Array(N),Sh=new Uint8Array(N);
+   for(let i=0;i<N;i++){const rem=Math.max(0,mine[i]-curT),g=binom(rem,p.gs),a=binom(rem,p.as);G[i]=p.cg+g;As[i]=p.ca+a;Sh[i]=p.csh+Math.max(g,rpois(p.spg*f));}
+   const add=(lab,arr,L)=>{let o=0,s=0;for(let i=0;i<N;i++){if(arr[i]>L)o++;s+=arr[i];}rows.push({n:p.n,pos:p.pos,side:p.side,lab,L,p:o/N,m:s/N});};
+   add('Goals',G,.5);add('Assists',As,.5);const P=new Uint8Array(N);for(let i=0;i<N;i++)P[i]=G[i]+As[i];add('Points',P,.5);add('Points',P,1.5);
+   let ms=0;for(let i=0;i<N;i++)ms+=Sh[i];ms/=N;add('Shots on goal',Sh,Math.max(.5,Math.round(ms-.5)+.5));}
+  else{const Sv=new Uint8Array(N);let ms=0;for(let i=0;i<N;i++){const og=Math.max(0,opp[i]-curO),shots=Math.max(og,rpois(p.oppShots*f));Sv[i]=Math.min(255,p.csv+Math.max(0,shots-og));ms+=Sv[i];}ms/=N;
+   const L=Math.round(ms-.5)+.5;let o=0;for(let i=0;i<N;i++)if(Sv[i]>L)o++;rows.push({n:p.n,pos:'G',side:p.side,lab:'Saves',L,p:o/N,m:ms});}}
+ const shown=rows.filter(r=>r.p>=.286&&r.p<=.714).sort((x,y)=>y.p-x.p);if(!shown.length)return '';
+ const team=s=>s==='h'?ctx.h:ctx.a;
+ return `<div class="card msec"><h3>${live?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims</h3><div class="hint" style="margin:0 0 10px">Goals, assists, points, shots on goal and goalie saves. Chance = how often the player goes over the line in the simulations (only 29%–71% shown).</div>
+ <div class="tw propscroll" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Projection</th></tr></thead><tbody>${shown.map(r=>`<tr><td><b>${r.n}</b><div class="hint" style="margin:0">${team(r.side)} · ${r.pos}</div></td><td>${r.lab} <b>Over ${r.L}</b></td>${pctCell(r.p)}<td>${r.m.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>`;}
+
 function renderAlt(ctx,R){
  const {H,A,n}=R,h=ctx.h,a=ctx.a,X0=(MATCH&&MATCH.g&&MATCH.g[10])||{},bH=badgeHTML(h,X0.ha,X0.ch,X0.lh),bA=badgeHTML(a,X0.aa,X0.ca,X0.la),pct0=x=>(x*100).toFixed(0)+'%',hint=t=>` <span class="hint" style="margin:0">${t}</span>`;
  let hw=0,sm=0,st=0;const sc=new Map();for(let i=0;i<n;i++){if(H[i]>A[i])hw++;sm+=H[i]-A[i];st+=H[i]+A[i];const k=H[i]+'-'+A[i];sc.set(k,(sc.get(k)||0)+1);}
