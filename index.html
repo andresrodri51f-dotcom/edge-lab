@@ -642,9 +642,10 @@ function runLive(){
 }
 
 const CLUBS=['UCL','EPL','La Liga','MLS'],INTL=['Friendlies','UEFA NL','CONCACAF NL','AFCON Qual.'],SOCCER=[...CLUBS,...INTL];
-const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS',Friendlies:'International Friendlies','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
-const LGORDER=['NBA','NFL','EuroLeague','UCL','EPL','La Liga','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies'];
-function inSport(g,s){return s==='All'||(s==='Soccer'?CLUBS.includes(g[0]):s==='International'?INTL.includes(g[0]):g[0]===s);}
+const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS',Friendlies:'International Friendlies',MLB:'MLB',NHL:'NHL',Tennis:'Tennis (ATP & WTA)','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
+const LGORDER=['UCL','EPL','La Liga','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
+function inSport(g,s){return s==='All'||(s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
+const CATS=['All','FC','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
 const SNAP=GAMES.list.slice();
 let gSport='All',gStat='All',FEED_ON=false;
 function hashColor(s){let h=0;for(const ch of s)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 36%)`;}
@@ -662,8 +663,8 @@ function gameCard(g,idx){
  if(pr){const pa=pr[0],ph=pr[1],pd=pr[2]||0;
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
- const line=X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
- const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl'}[lg]||'soccer');
+ const line=X.ten?`<div class="gline">${X.setLine?'Sets: '+X.setLine:(X.tour||'')}</div>`:X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
+ const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',EuroLeague:'basketball'}[lg]||'soccer');
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
@@ -679,7 +680,7 @@ function renderNext(){
  const up=L.filter(g=>g[1]==='up'&&inSport(g,gNext)).sort((p,q)=>dt(p)-dt(q));
  const days=new Map();for(const g of up){const d=dt(g)?new Date(dt(g)).toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}):'Upcoming';if(!days.has(d))days.set(d,[]);days.get(d).push(g);}
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','EuroLeague','Soccer','International'].map(s=>chip(gNext===s,s)).join('')}</div>
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${CATS.map(s=>chip(gNext===s,s)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
@@ -692,9 +693,9 @@ function renderByDate(){
  const cnt=new Map();for(const g of fs){const k=dayKey(g);cnt.set(k,(cnt.get(k)||0)+1);}const keys=[...cnt.keys()].sort();
  const today=dayKey([0,0,0,0,0,0,0,0,0,0,{date:new Date().toISOString()}]);
  if(!gDate||!cnt.has(gDate))gDate=cnt.has(today)?today:(keys.find(k=>k>today)||keys[keys.length-1]||today);
- const sports=['All','NBA','NFL','EuroLeague','Soccer','International'],chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
+ const sports=CATS,chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
- const lgs=gSport==='Soccer'?CLUBS:gSport==='International'?INTL:[gSport],nm=LGNAME;
+ const lgs=gSport==='FC'?SOCCER:[gSport],nm=LGNAME;
  $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
  <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
  ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
@@ -704,17 +705,17 @@ function renderGames(){
  if(gView==='next')return renderNext();
  if(gSport!=='All')return renderByDate();
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
- const sports=['All','NBA','NFL','EuroLeague','Soccer','International'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
+ const sports=CATS,stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
  const f=L.filter(g=>inSport(g,gSport)&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;renderByDate.scrolled=0;
- $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">11</div><div class="s">NBA · NFL · EuroLeague · clubs · internationals</div></div></div>
+ $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">14</div><div class="s">FC · NBA · MLB · NFL · NHL · Tennis · EuroLeague</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
  ${f.length?LGORDER.map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm=LGNAME[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
-const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1'],['Friendlies','soccer/fifa.friendly'],['UEFA NL','soccer/uefa.nations'],['CONCACAF NL','soccer/concacaf.nations.league'],['AFCON Qual.','soccer/caf.nations_qual']];
+const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['NHL','hockey/nhl'],['MLB','baseball/mlb'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1'],['Friendlies','soccer/fifa.friendly'],['UEFA NL','soccer/uefa.nations'],['CONCACAF NL','soccer/concacaf.nations.league'],['AFCON Qual.','soccer/caf.nations_qual']];
 function setFeed(on,txt){const el=$('feed');if(!el)return;el.classList.toggle('on',on);$('feedtxt').textContent=txt;}
 const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=1000;
 function rate(){return 1000;}
@@ -737,7 +738,7 @@ function ymdL(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+S
 async function fetchAhead(lg,p,full){
  const S=SOCD[lg]||(SOCD[lg]={days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
  const cur=await getJSON(base);if(cur)S.cur=cur;
- if(full&&lg==='NBA'){const now=Date.now();await Promise.all([1,2,3].map(async d=>{const k=ymdL(new Date(now+d*864e5));const old=S.days[k];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+k);if(x)S.days[k]={t:now,events:x.events||[]};}));}
+ if(full&&(lg==='NBA'||lg==='NHL'||lg==='MLB')){const now=Date.now();await Promise.all([1,2,3].map(async d=>{const k=ymdL(new Date(now+d*864e5));const old=S.days[k];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+k);if(x)S.days[k]={t:now,events:x.events||[]};}));}
  const m=new Map();if(S.cur)for(const e of S.cur.events||[])m.set(e.id,e);for(const k of Object.keys(S.days))for(const e of S.days[k].events)if(!m.has(e.id))m.set(e.id,e);
  if(m.size)FCACHE[lg]={events:[...m.values()]};
 }
@@ -770,25 +771,27 @@ function buildList(){
    const H=c.competitors.find(t=>t.homeAway==='home'),A=c.competitors.find(t=>t.homeAway==='away');if(!H||!A)continue;
    const s=e.status&&e.status.type?e.status.type.state:'pre',st=s==='in'?'live':s==='post'?'final':'up';
    const a=A.team.shortDisplayName||A.team.displayName,h=H.team.shortDisplayName||H.team.displayName;
+   let pHml=null;
    const soc=SOCCER.includes(lg),o=(c.odds||[]).find(z=>z&&(z.details||z.moneyline));let spread=null,total=null,det=null,p3=null;
    if(o){total=o.overUnder!=null?+o.overUnder:null;
     if(soc){det=o.details||null;const ml=o.moneyline,od=k=>ml&&ml[k]&&(ml[k].close||ml[k].open)&&+(ml[k].close||ml[k].open).odds;const iH=impl(od('home')),iA=impl(od('away')),iD=impl(od('draw'));if(iH&&iA&&iD){const t=iH+iA+iD;p3=[iA/t*100,iH/t*100,iD/t*100];}}
+    else if((lg==='NHL'||lg==='MLB')&&o.details){const m=String(o.details).match(/^([A-Z]+)\s+([-+]?\d+)$/);if(m){const v=+m[2];if(Math.abs(v)>=100){const pf=impl(v);pHml=m[1]===H.team.abbreviation?pf:1-pf;}}}
     else if(o.details){const m=String(o.details).match(/^([A-Z]+)\s+([-+]?\d+(?:\.\d+)?)$/);if(m){const v=+m[2];spread=m[1]===H.team.abbreviation?v:-v;}else if(/EVEN|PK/i.test(o.details))spread=0;}}
    const dstr=new Date(e.date).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
    const info=st==='up'?dstr:st==='final'&&SOCCER.includes(lg)?(e.status.type.shortDetail||'FT')+' · '+new Date(e.date).toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}):(e.status.type.shortDetail||'');
-   let pr=0;if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}if(st==='up'&&p3)pr=p3;
+   let pr=0;if(st==='up'&&typeof pHml!=='undefined'&&pHml!=null&&(lg==='NHL'||lg==='MLB'))pr=[100-pHml*100,pHml*100];if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}if(st==='up'&&p3)pr=p3;
    if(st==='live'&&total==null)needLine(lg,p,e.id);
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:p,date:e.date,det,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
- return list.concat(elList());
+    {id:e.id,path:p,date:e.date,det,pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+ return list.concat(elList(),tennisList());
 }
 async function pullFeed(){
  if(busy)return !!lastOk;busy=true;
  const now=Date.now(),full=now-lastFull>60000||!Object.keys(FCACHE).length;
  const liveLg=new Set(GAMES.list.filter(g=>g[1]==='live').map(g=>g[0]));
  const todo=FEEDS.filter(([lg])=>full||liveLg.has(lg));
- await Promise.all([fetchEL(full),...todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full))]);
+ await Promise.all([(full||GAMES.list.some(g=>g[0]==='Tennis'&&g[1]==='live'))?fetchTennis(full):null,fetchEL(full),...todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full))]);
  if(full&&Object.keys(FCACHE).length)lastFull=now;
  busy=false;
  if(!Object.keys(FCACHE).length){setFeed(false,'Snapshot');return false;}
@@ -922,11 +925,12 @@ async function openMatch(idx){
  MATCH={idx,g,lg,a,h,X};
  $('matchbox').style.display='block';document.body.style.overflow='hidden';
  $('matchbox').innerHTML=`<div class="mwrap"><div class="card mhead">${matchHeader(g)}</div><div id="mbody"><div class="card" style="text-align:center;padding:40px"><div class="kpi .l" style="color:var(--mut)">Loading match data and running ${NSIM.toLocaleString()} simulations…</div></div></div></div>`;
- let sum=null;if(X.id&&X.path)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
+ let sum=null;if(X.id&&X.path&&!ALT.includes(lg))sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
  if(!MATCH||MATCH.idx!==idx)return;
  MATCH.sum=sum;
- if(!SOCCER.includes(lg)&&st!=='final'){try{MATCH.props=await fetchProps(X);}catch(e){MATCH.props=null;}}
+ if(!SOCCER.includes(lg)&&!ALT.includes(lg)&&st!=='final'){try{MATCH.props=await fetchProps(X);}catch(e){MATCH.props=null;}}
  try{
+  if(ALT.includes(lg)&&st!=='final'){const ctx=altCtx(g);setTimeout(()=>{const R=altSim(ctx);if(MATCH&&MATCH.idx===idx)renderAlt(ctx,R);clearTimeout(MATCH.t);if(st==='live')MATCH.t=setTimeout(()=>{if(MATCH)openKey(encodeURIComponent(lg+'|'+a+'|'+h));},15000);},20);return;}
   if(st==='final')return renderFinal(sum);
   const ctx=await buildCtx(g,sum);
   setTimeout(()=>{const R=runMatchSim(ctx);if(MATCH&&MATCH.idx===idx)renderMatch(ctx,R);},20);
@@ -1163,6 +1167,75 @@ function renderMatch(ctx,R){
 }
 async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;if(!SOCCER.includes(g[0])&&g[1]!=='final'){const pp=await fetchProps(X);if(pp)MATCH.props=pp;}MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
+
+/* ---------- NHL, MLB and tennis: simulation + match page ---------- */
+const ALT=['NHL','MLB','Tennis'];
+let TEN={days:{},cur:{}};
+async function fetchTennis(full){
+ const now=Date.now();
+ for(const tour of ['atp','wta']){const base=`https://site.api.espn.com/apis/site/v2/sports/tennis/${tour}/scoreboard`;const d=await getJSON(base);if(d)TEN.cur[tour]=d;
+  if(full)await Promise.all([1,2,3].map(async k=>{const key=tour+ymdL(new Date(now+k*864e5));const old=TEN.days[key];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+ymdL(new Date(now+k*864e5)));if(x)TEN.days[key]={t:now,d:x};}));}
+}
+function tennisList(){
+ const seen=new Set(),out=[],now=Date.now(),lo=now-3*864e5,hi=now+5*864e5;
+ const docs=[...Object.values(TEN.cur),...Object.values(TEN.days).map(x=>x.d)];
+ for(const d of docs)for(const e of (d&&d.events)||[])for(const gr of e.groupings||[]){if(!/Singles/.test((gr.grouping&&gr.grouping.displayName)||''))continue;
+  for(const c of gr.competitions||[]){if(seen.has(c.id))continue;seen.add(c.id);const t=Date.parse(c.date||c.startDate||e.date);if(t<lo||t>hi)continue;
+   const H=c.competitors.find(x=>x.homeAway==='home')||c.competitors[0],A=c.competitors.find(x=>x.homeAway==='away')||c.competitors[1];if(!H||!A)continue;
+   const hn=(H.athlete&&H.athlete.displayName)||'TBD',an=(A.athlete&&A.athlete.displayName)||'TBD';if(hn==='TBD'&&an==='TBD')continue;
+   const s=c.status&&c.status.type?c.status.type.state:'pre',st=s==='in'?'live':s==='post'?'final':'up';
+   const hs=(H.linescores||[]).map(x=>x.value),as=(A.linescores||[]).map(x=>x.value),n=Math.max(hs.length,as.length),done=st==='live'?n-1:n;
+   let hw=0,aw=0;for(let i=0;i<done;i++){if((hs[i]||0)>(as[i]||0))hw++;else if((as[i]||0)>(hs[i]||0))aw++;}
+   const setLine=hs.map((v,i)=>`${as[i]??0}-${v}`).join(' · ');
+   const info=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):(c.status.type.shortDetail||'');
+   out.push(['Tennis',st,an,hn,st==='up'?null:aw,st==='up'?null:hw,`${(c.round&&c.round.displayName)||''}${info?' · '+info:''}`,st==='up'?[50,50]:0,'',undefined,
+    {id:'T'+c.id,ten:1,date:c.date||e.date,tour:e.name,bo:(c.format&&c.format.regulation&&c.format.regulation.periods)||3,setLine,hwS:hw,awS:aw,aa:abbrOf(an),ha:abbrOf(hn)}]);}}
+ return out;
+}
+function altCtx(g){
+ const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{},ctx={lg,st,a,h,ca:as||0,ch:hs||0,notes:[]};
+ if(lg==='Tennis'){ctx.bo=X.bo||3;ctx.need=Math.ceil(ctx.bo/2);ctx.s=.5;ctx.hw=X.hwS||0;ctx.aw=X.awS||0;ctx.notes.push('The free feed has no rankings or odds for tennis, so the match starts as even; once it’s live, the sets already played count.');return ctx;}
+ const T=X.total!=null?X.total:(lg==='NHL'?6.1:8.6);let pH=X.pH!=null?X.pH:(pr&&pr.length===2?pr[1]/100:.54);
+ let best=.5,be=1e9;for(let s=.3;s<=.7;s+=.005){const lh=T*s,la=T*(1-s),r=poisRes(lh,la);const p=r[0]+r[1]*s;if(Math.abs(p-pH)<be){be=Math.abs(p-pH);best=s;}}
+ ctx.lamH=T*best;ctx.lamA=T*(1-best);ctx.T=T;ctx.line=X.total;
+ let f=1;if(st==='live'){if(lg==='NHL'){const q=Math.min(3,X.period||1),[mm,ss]=fixClock(X.clock).split(':').map(Number);f=Math.max(0,((3-q)*20+(mm||0)+(ss||0)/60)/60);}else{f=Math.max(0,(9-(X.period||1)+.5)/9);}}
+ ctx.f=f;ctx.notes.push(X.total!=null?'Scoring rates fitted to the DraftKings total and moneyline.':'No betting line yet, so league-average scoring is used.');
+ return ctx;
+}
+function altSim(ctx){
+ const n=NSIM,H=new Int16Array(n),A=new Int16Array(n);let ot=0;
+ if(ctx.lg==='Tennis'){for(let i=0;i<n;i++){let h=ctx.hw,a=ctx.aw;while(h<ctx.need&&a<ctx.need){if(Math.random()<ctx.s)h++;else a++;}H[i]=h;A[i]=a;}return {H,A,n,ot:0};}
+ for(let i=0;i<n;i++){let h=ctx.ch+(ctx.lg==='MLB'?rnegbin(ctx.lamH*ctx.f,2.1):rpois(ctx.lamH*ctx.f)),a=ctx.ca+(ctx.lg==='MLB'?rnegbin(ctx.lamA*ctx.f,2.1):rpois(ctx.lamA*ctx.f));
+  if(h===a){ot++;if(Math.random()<ctx.lamH/(ctx.lamH+ctx.lamA))h++;else a++;}H[i]=h;A[i]=a;}
+ return {H,A,n,ot:ot/n};
+}
+function renderAlt(ctx,R){
+ const {H,A,n}=R,h=ctx.h,a=ctx.a,X0=(MATCH&&MATCH.g&&MATCH.g[10])||{},bH=badgeHTML(h,X0.ha,X0.ch),bA=badgeHTML(a,X0.aa,X0.ca),pct0=x=>(x*100).toFixed(0)+'%',hint=t=>` <span class="hint" style="margin:0">${t}</span>`;
+ let hw=0,sm=0,st=0;const sc=new Map();for(let i=0;i<n;i++){if(H[i]>A[i])hw++;sm+=H[i]-A[i];st+=H[i]+A[i];const k=H[i]+'-'+A[i];sc.set(k,(sc.get(k)||0)+1);}
+ const pH=hw/n,pA=1-pH,ft=st/n,fm=sm/n,share=fn=>{let c=0;for(let i=0;i<n;i++)if(fn(H[i],A[i]))c++;return c/n;};
+ const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]);const pred=[];
+ pred.push(['Winner',`${pH>=.5?h:a}${hint(pct0(Math.max(pH,pA)))}`]);
+ let grid='';
+ if(ctx.lg==='Tennis'){const unit='sets';pred.push(['Most likely score (sets)',`${top[0][0].replace('-',' – ')}${hint(pct0(top[0][1]/n))}`]);
+  const L=ctx.bo===5?3.5:2.5,o=share((x,y)=>x+y>L);pred.push([`Total sets O/U ${L}`,o>=.5?`Over${hint(pct0(o))}`:`Under${hint(pct0(1-o))}`]);
+  const straight=share((x,y)=>Math.min(x,y)===0);pred.push(['Straight-sets win',`${pct0(straight)}`]);
+  const outs=top.slice().sort((p,q)=>{const [a1,b1]=p[0].split('-').map(Number),[a2,b2]=q[0].split('-').map(Number);return (b1-a1)-(b2-a2);});
+  grid=`<div class="ggrid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${outs.map(([k,c])=>{const [x,y]=k.split('-').map(Number);return `<div class="rc" style="padding:14px 6px;background:color-mix(in srgb,var(--accent) ${Math.round(c/top[0][1]*85)}%,var(--surface2))"><div style="font:700 18px var(--display)">${x>y?abbrOf(h):abbrOf(a)} ${Math.max(x,y)}–${Math.min(x,y)}</div>${(c/n*100).toFixed(1)}%</div>`;}).join('')}</div><div class="hint" style="text-align:center">Final score in sets</div>`;
+ }else{const unit=ctx.lg==='NHL'?'goals':'runs';
+  pred.push(['Projected score',`${h} ${((ft+fm)/2).toFixed(1)} – ${((ft-fm)/2).toFixed(1)} ${a}`]);
+  const L=ctx.line!=null?ctx.line:Math.round(ft-.5)+.5;let o=0,pu=0;for(let i=0;i<n;i++){const v=H[i]+A[i];if(v>L)o++;else if(v===L)pu++;}const po=o/(n-pu||1);
+  pred.push([`Total ${unit} O/U ${L}${ctx.line!=null?' (DraftKings)':''}`,po>=.5?`Over${hint(pct0(po))}`:`Under${hint(pct0(1-po))}`]);
+  const pl=share((x,y)=>x-y>=2);pred.push([`${ctx.lg==='NHL'?'Puck':'Run'} line ${h} -1.5`,pl>=.5?`${h} covers${hint(pct0(pl))}`:`${a} +1.5 covers${hint(pct0(1-pl))}`]);
+  pred.push(['Most likely score',`${top[0][0].replace('-',' – ')}${hint(pct0(top[0][1]/n))}`]);
+  pred.push([ctx.lg==='NHL'?'Goes to overtime':'Extra innings',pct0(R.ot)]);
+  const mx=ctx.lg==='NHL'?6:9,M=[...Array(mx+1)].map(()=>new Array(mx+1).fill(0));for(let i=0;i<n;i++)M[Math.min(mx,H[i])][Math.min(mx,A[i])]++;let mm=0;for(const r of M)for(const c of r)mm=Math.max(mm,c);
+  const idx=[...Array(mx+1).keys()];
+  grid=`<table class="rgrid"><tbody>${idx.slice().reverse().map(x=>`<tr><th>${x}${x===mx?'+':''}</th>${idx.map(y=>{const p=M[x][y]/n;return `<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(M[x][y]/mm*85)}%,var(--surface2))">${p<.001?'&lt;0.1%':(p*100).toFixed(1)+'%'}</div></td>`;}).join('')}</tr>`).join('')}<tr><th></th>${idx.map(y=>`<th>${y}${y===mx?'+':''}</th>`).join('')}</tr></tbody></table><div class="hint" style="text-align:center">Rows: ${h} ${unit} · Columns: ${a} ${unit} (final, including ${ctx.lg==='NHL'?'overtime':'extra innings'})</div>`;}
+ const wp=`<div class="wprow"><div class="hint" style="margin:0">Win probability at the end of the match</div><div class="wpcells">${bH}<b>${pct0(pH)}</b><span class="wpsep"></span><b>${pct0(pA)}</b>${bA}</div></div>`;
+ $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>
+ <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
+ <div class="hint">${ctx.notes.join(' ')}</div>`;
+}
 
 /* ---------- copy / tabs ---------- */
 function copyOut(s){
