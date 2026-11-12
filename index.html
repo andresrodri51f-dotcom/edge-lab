@@ -678,7 +678,7 @@ function renderNext(){
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
  $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','EuroLeague','Soccer'].map(s=>chip(gNext===s,s)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
- ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} games</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
+ ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
 let gDate=null;
 function dayKey(g){const d=g[10]&&g[10].date?new Date(g[10].date):new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -693,8 +693,8 @@ function renderByDate(){
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
  const lgs=gSport==='Soccer'?['UCL','EPL','La Liga','MLS']:[gSport],nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'};
  $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
- <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} games</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
- ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} games</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
+ <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
+ ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
  const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
 }
 function renderGames(){
