@@ -183,6 +183,22 @@ table.mt td{vertical-align:middle}
 .ptitle{margin:0;font:700 17px var(--display);letter-spacing:-.01em}
 .pred .prow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
 .pred .prow b{font-weight:600;text-align:right}
+.ibanner{height:150px;border-radius:14px;background-size:cover;background-position:center;margin:-4px 0 12px;position:relative;overflow:hidden}
+.ibanner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,8,20,.75))}
+.ibanner span{position:absolute;left:14px;bottom:10px;z-index:1;color:#fff;font:700 15px var(--display)}
+.igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.icell{background:var(--surface2);border-radius:12px;padding:10px 12px}.icell .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}.icell .v{font-weight:700;margin-top:3px}
+.frow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.frow:first-of-type{border-top:0}
+.fp{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;font:700 12px var(--mono);margin-left:4px;color:#fff}.fp.W{background:#22b07d}.fp.L{background:#e04a5f}.fp.D,.fp.T{background:#7d7799}
+.perfs{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.perfs{grid-template-columns:1fr}}
+.perf{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.perf:first-of-type{border-top:0}
+.face{width:46px;height:46px;border-radius:50%;background:var(--surface2) center/cover;flex:none;display:grid;place-items:center;font:700 14px var(--display);color:var(--mut);border:2px solid var(--line2);overflow:hidden}.face img{width:100%;height:100%;object-fit:cover}
+.perf .pv{margin-left:auto;font:700 18px var(--display)}.perf .pc{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.lock{position:relative;overflow:hidden}.lock .blur{filter:blur(7px);opacity:.55;pointer-events:none;user-select:none}
+.lock .over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px;background:linear-gradient(180deg,rgba(13,10,24,.25),rgba(13,10,24,.85))}
+.lock .over h2{font:800 20px var(--display);margin:0 0 6px}.lock .over ul{list-style:none;padding:0;margin:6px 0 14px;color:var(--mut);font-size:13px;line-height:1.7}
+.paybtn{background:var(--grad);color:#fff;border:0;border-radius:14px;padding:13px 22px;font:700 15px var(--body);cursor:pointer;box-shadow:0 8px 24px rgba(244,63,107,.35)}
+.codebox{display:flex;gap:6px;margin-top:10px}.codebox input{background:var(--surface2);border:1px solid var(--line2);border-radius:10px;color:var(--ink);padding:8px 10px;font:600 13px var(--mono);width:150px}
 .wprow{background:var(--surface2);border-radius:12px;padding:12px;margin-top:14px;text-align:center}
 .wpcells{display:flex;align-items:center;justify-content:space-around;gap:8px;margin-top:10px}
 .wpcells b{font:700 20px var(--display)}
@@ -971,10 +987,12 @@ async function openMatch(idx){
  const g=GAMES.list[idx];if(!g)return;const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
  MATCH={idx,g,lg,a,h,X};
  $('matchbox').style.display='block';document.body.style.overflow='hidden';
- $('matchbox').innerHTML=`<div class="mwrap"><div class="card mhead">${matchHeader(g)}</div><div id="mbody"><div class="card" style="text-align:center;padding:40px"><div class="kpi .l" style="color:var(--mut)">Loading match data and running ${NSIM.toLocaleString()} simulations…</div></div></div></div>`;
- let sum=null;if(X.id&&X.path&&!ALT.includes(lg))sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
+ $('matchbox').innerHTML=`<div class="mwrap"><div class="card mhead">${matchHeader(g)}</div><div id="minfo"></div><div id="mbody"><div class="card" style="text-align:center;padding:40px"><div class="kpi .l" style="color:var(--mut)">Loading match data and running ${NSIM.toLocaleString()} simulations…</div></div></div></div>`;
+ let sum=null;if(X.id&&X.path&&lg!=='Tennis'&&lg!=='UFC')sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
  if(!MATCH||MATCH.idx!==idx)return;
  MATCH.sum=sum;
+ try{$('minfo').innerHTML=infoHTML(g,sum);}catch(e){}
+ if(st!=='final'&&!isPro()){$('mbody').innerHTML=lockHTML(g);return;}
  if(!SOCCER.includes(lg)&&!ALT.includes(lg)&&st!=='final'){try{MATCH.props=await fetchProps(X);}catch(e){MATCH.props=null;}}
  try{
   if(lg==='UFC')return ufcOpen(g,idx);
@@ -998,7 +1016,7 @@ function leadersHTML(sum){
  return `<div class="grid2">${sum.leaders.map(T=>`<div class="card"><h3>${(T.team&&T.team.displayName)||''}</h3>${(T.leaders||[]).slice(0,6).map(c=>{const l=(c.leaders||[])[0];return l?`<div class="f"><span>${c.displayName||c.name}</span><span style="font-family:var(--mono);font-size:12px;text-align:right">${l.athlete.displayName} · ${l.displayValue}</span></div>`:'';}).join('')}</div>`).join('')}</div>`;
 }
 function renderFinal(sum){
- $('mbody').innerHTML=`<div class="top none">This match is over. Here are the leading performers.</div>${leadersHTML(sum)||'<div class="hint">No player details available for this match.</div>'}`;
+ $('mbody').innerHTML=`<div class="top none">This match is over. Final score above; game info, form and top performers are shown here.</div>`;
 }
 function parseDK(pc){if(!pc)return null;const o=s=>{if(s==null||s==='')return null;const v=parseFloat(String(s).replace('+',''));return isNaN(v)?null:v;};
  const g2=(a,b)=>pc[a]&&pc[a][b]&&(pc[a][b].close||pc[a][b].open);
@@ -1244,7 +1262,7 @@ function renderMatch(ctx,R){
  const list=items.filter(x=>(x.p>=.286&&x.p<=.714)||(x.any&&x.p>=.08&&x.p<.95)).sort((p,q)=>q.p-p.p);
  const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td>${x.proj}</td><td>${x.range}</td></tr>`;
  const anyList=list.filter(x=>x.any).slice(0,24),mainList=list.filter(x=>!x.any||(x.p>=.286&&x.p<=.714));
- const propRows=mainList.slice(0,50).map(rowH),moreRows=mainList.slice(50).map(rowH);
+ const propRows=mainList.slice(0,8).map(rowH),moreRows=mainList.slice(8,60).map(rowH);
  const bk=BOOKS[0];
  const anyRow=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td><b style="color:var(--good)">${amer(x.p*.97)}</b></td></tr>`;
  const anyHTML=anyList.length?`<div class="card msec"><h3>Anytime props · goals, assists, bookings, touchdowns, sacks</h3>
@@ -1266,7 +1284,7 @@ function renderMatch(ctx,R){
  const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
  const propsHTML=(dkProps?'':propRows.length?`<div class="card msec"><h3>${ctx.st==='live'?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims each</h3><div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings doesn’t post live props in the free feed, so these are the model’s live lines, limited to fair odds between -250 and +250.':'DraftKings props aren’t posted for this game yet. These are the model’s lines, limited to fair odds between -250 and +250.'}</div><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':(ctx.lg==='EuroLeague'?'Player props aren’t available for EuroLeague in the free feed.':'Player props need the live feed. Open Edge Lab from the website link.')}</div></div>`);
  const oddsBtn=LCFG[ctx.lg]?`<div class="run"><button class="btn ghost" onclick="openLive(${MATCH.idx})">Compare with my sportsbook odds</button></div>`:'';
- $('mbody').innerHTML=html+dkProps+propsHTML+oddsBtn+(MATCH&&MATCH.sum&&ctx.st!=='live'?`<h3 class="glg" style="margin:18px 0 8px">Season leaders</h3>`+leadersHTML(MATCH.sum):'');
+ $('mbody').innerHTML=html+dkProps+propsHTML+oddsBtn;
  clearTimeout(MATCH.t);if(ctx.st==='live'||ctx.st==='up'){MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},ctx.st==='live'?15000:60000);}
 }
 async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;if(!SOCCER.includes(g[0])&&g[1]!=='final'){const pp=await fetchProps(X);if(pp)MATCH.props=pp;}MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
@@ -1341,6 +1359,55 @@ function renderAlt(ctx,R){
  <div class="hint">${ctx.notes.join(' ')}</div>`;
 }
 
+
+
+/* ---------- free game info (venue, referee, form, top performers, injuries) + Pro paywall ---------- */
+const PRO_HASH='342de20d7e29e80fd597cf9399965831dd95f12829055a0ece1aeb7b41887efe',PRO_PRICE='$25/month',PRO_SKU='edge_pro_monthly';
+function isPro(){try{if(window.EdgeStore&&EdgeStore.active)return true;return localStorage.getItem('el_pro')==='1';}catch(e){return !!window._pro;}}
+async function buyPro(){
+ if(window.EdgeStore&&EdgeStore.purchase){try{const ok=await EdgeStore.purchase(PRO_SKU);if(ok){EdgeStore.active=true;reopen();}}catch(e){}return;}
+ const m=$('paynote');if(m)m.innerHTML='Subscriptions are sold inside the Edge Lab app for iPhone and Android, paid with Apple Pay / Google Pay through the App Store or Google Play. The app isn’t in the stores yet. If you have an access code, enter it below.';
+}
+async function tryCode(){const v=(($('procode')||{}).value||'').trim().toUpperCase();if(!v)return;
+ const h=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+ if(h===PRO_HASH){try{localStorage.setItem('el_pro','1');}catch(e){}window._pro=1;reopen();}else{const m=$('paynote');if(m)m.textContent='That code isn’t valid.';}}
+function reopen(){if(MATCH&&MATCH.g)openKey(encodeURIComponent(MATCH.g[0]+'|'+MATCH.g[2]+'|'+MATCH.g[3]));}
+function lockHTML(g){const [lg,st,a,h]=g,ufc=lg==='UFC';
+ const fake=['Winner','Over/Under','Most likely score','Spread','Top player prop','Anytime scorer'].map(l=>`<div class="prow"><span>${l}</span><b>${ufc?'Decision':'██████'} <span class="hint" style="margin:0">64%</span></b></div>`).join('');
+ return `<div class="card msec lock"><div class="blur"><h2 class="ptitle">${ufc?'Fight':'Match'} prediction</h2>${fake}${fake}</div>
+ <div class="over"><div style="font-size:30px">🔒</div><h2>Unlock the model</h2><div class="hint" style="margin:0">${NSIM.toLocaleString()} simulations for every game</div>
+ <ul><li>Winner, score and result probabilities</li><li>Over/under, spread and ${ufc?'method & round':'player props'}</li><li>Live updates while the game is on</li></ul>
+ <button class="paybtn" onclick="buyPro()">Unlock predictions · ${PRO_PRICE}</button>
+ <div class="hint" id="paynote" style="max-width:360px;margin:10px 0 0"> Pay with Apple Pay or Google Pay. Cancel anytime.</div>
+ <div class="codebox"><input id="procode" placeholder="Access code" autocomplete="off" onkeydown="if(event.key==='Enter')tryCode()"><button class="btn ghost" style="padding:8px 12px" onclick="tryCode()">Apply</button></div></div></div>`;}
+const initials=n=>String(n||'').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const faceHTML=(src,n)=>`<span class="face">${src?`<img src="${src}" alt="" onerror="this.remove()">`:''}${src?'':initials(n)}</span>`;
+function infoHTML(g,sum){
+ const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{},gi=(sum&&sum.gameInfo)||{},V=gi.venue||{},soc=SOCCER.includes(lg);
+ const cells=[];const d=X.date?new Date(X.date):null;
+ if(d)cells.push(['Kickoff',d.toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})]);
+ if(V.fullName)cells.push([lg==='UFC'?'Venue':soc?'Stadium':'Venue',V.fullName]);
+ const ad=V.address||{};if(ad.city)cells.push(['City',[ad.city,ad.state||ad.country].filter(Boolean).join(', ')]);
+ const off=(gi.officials||[]);const ref=off.find(o=>/referee|crew chief/i.test((o.position&&(o.position.displayName||o.position.name))||''))||off[0];
+ if(lg!=='Tennis'&&lg!=='UFC')cells.push(['Referee',ref?ref.displayName||ref.fullName:'Announced closer to the game']);
+ if(off.length>1)cells.push(['Officials',off.slice(0,4).map(o=>o.displayName||o.fullName).join(', ')]);
+ if(gi.attendance)cells.push(['Attendance',(+gi.attendance).toLocaleString()]);
+ const tv=X.natTV||(((sum&&sum.broadcasts)||[]).map(b=>(b.media&&b.media.shortName)||(b.names||[])[0]).filter(Boolean)[0]);if(tv)cells.push(['TV',tv]);
+ if(lg==='UFC'){cells.push(['Card',X.card||''],['Weight class',X.wc||''],['Rounds',X.bo||3],['Records',`${a} ${X.recA||'-'} · ${h} ${X.recH||'-'}`]);}
+ if(lg==='Tennis'){cells.push(['Tournament',X.tour||''],['Format',`Best of ${X.bo||3} sets`]);}
+ if(X.recA&&lg!=='UFC')cells.push(['Records',`${X.aa||abbrOf(a)} ${X.recA} · ${X.ha||abbrOf(h)} ${X.recH||'-'}`]);
+ const ss=sum&&sum.seasonseries&&sum.seasonseries[0];if(ss&&ss.summary)cells.push(['Season series',ss.summary]);
+ const img=V.images&&V.images[0]&&V.images[0].href;
+ let out=`<div class="card msec"><h2 class="ptitle">Game info</h2>${img?`<div class="ibanner" style="background-image:url('${img}')"><span>${V.fullName||''}</span></div>`:''}<div class="igrid">${cells.map(([k,v])=>`<div class="icell"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div></div>`;
+ const tm=(T)=>{const ab=(T&&(T.abbreviation||T.displayName))||'';return ab;};
+ const L5=(sum&&sum.lastFiveGames)||[];
+ if(L5.length){out+=`<div class="card msec"><h2 class="ptitle">Form · last 5</h2>${L5.map(f=>`<div class="frow"><span style="display:flex;align-items:center;gap:8px">${f.team&&f.team.logo?`<img src="${f.team.logo}" alt="" style="width:26px;height:26px;object-fit:contain">`:''}<b>${(f.team&&f.team.displayName)||''}</b></span><span>${(f.events||[]).slice(0,5).map(e=>`<span class="fp ${e.gameResult||'D'}" title="${e.atVs||''} ${(e.opponent&&e.opponent.abbreviation)||''} ${e.score||''}">${e.gameResult||'-'}</span>`).join('')}</span></div>`).join('')}</div>`;}
+ const LD=(sum&&sum.leaders)||[];
+ if(LD.length&&LD.some(T=>(T.leaders||[]).length)){out+=`<div class="card msec"><h2 class="ptitle">Top performers</h2><div class="perfs">${LD.map(T=>`<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${T.team&&T.team.logo?`<img src="${T.team.logo}" alt="" style="width:22px;height:22px;object-fit:contain">`:''}<b>${(T.team&&T.team.displayName)||''}</b></div>${(T.leaders||[]).slice(0,3).map(c=>{const l=(c.leaders||[])[0];if(!l||!l.athlete)return '';const A=l.athlete;return `<div class="perf">${faceHTML(A.headshot&&A.headshot.href,A.displayName)}<div><b>${A.displayName}</b><div class="pc">${c.displayName||c.name}</div></div><span class="pv">${l.displayValue}</span></div>`;}).join('')}</div>`).join('')}</div></div>`;}
+ const INJ=((sum&&sum.injuries)||[]).filter(T=>(T.injuries||[]).length);
+ if(INJ.length){out+=`<div class="card msec"><h2 class="ptitle">Injuries</h2><div class="perfs">${INJ.map(T=>`<div><b>${(T.team&&T.team.displayName)||''}</b>${T.injuries.slice(0,5).map(i=>`<div class="frow"><span>${(i.athlete&&i.athlete.displayName)||''}</span><span class="pill ${/out/i.test(i.status||'')?'livep':'lean'}">${i.status||''}</span></div>`).join('')}</div>`).join('')}</div></div>`;}
+ return out;
+}
 
 /* ---------- UFC: fight cards, 100,000-simulation fight model ---------- */
 let UFC={d:null,t:0};
