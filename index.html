@@ -641,7 +641,10 @@ function runLive(){
   ${hist(M,-(spr||0),`Final home margin (${h} − ${a}) · ${n.toLocaleString()} sims from current score`,`${a} side`,`${h} side`)}`;
 }
 
-const SOCCER=['UCL','EPL','La Liga','MLS'];
+const CLUBS=['UCL','EPL','La Liga','MLS'],INTL=['Friendlies','UEFA NL','CONCACAF NL','AFCON Qual.'],SOCCER=[...CLUBS,...INTL];
+const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS',Friendlies:'International Friendlies','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
+const LGORDER=['NBA','NFL','EuroLeague','UCL','EPL','La Liga','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies'];
+function inSport(g,s){return s==='All'||(s==='Soccer'?CLUBS.includes(g[0]):s==='International'?INTL.includes(g[0]):g[0]===s);}
 const SNAP=GAMES.list.slice();
 let gSport='All',gStat='All',FEED_ON=false;
 function hashColor(s){let h=0;for(const ch of s)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 36%)`;}
@@ -673,10 +676,10 @@ let gNext='All',gView='games';
 function viewToggle(){const b=(v,l)=>`<button class="btn ${gView===v?'':'ghost'}" style="padding:9px 18px" onclick="gView='${v}';renderGames()">${l}</button>`;return `<div style="display:flex;gap:8px;margin-bottom:14px">${b('games','Games')}${b('next','Next matches')}</div>`;}
 function renderNext(){
  const L=GAMES.list,dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;
- const up=L.filter(g=>g[1]==='up'&&(gNext==='All'||(gNext==='Soccer'?SOCCER.includes(g[0]):g[0]===gNext))).sort((p,q)=>dt(p)-dt(q));
+ const up=L.filter(g=>g[1]==='up'&&inSport(g,gNext)).sort((p,q)=>dt(p)-dt(q));
  const days=new Map();for(const g of up){const d=dt(g)?new Date(dt(g)).toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}):'Upcoming';if(!days.has(d))days.set(d,[]);days.get(d).push(g);}
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','EuroLeague','Soccer'].map(s=>chip(gNext===s,s)).join('')}</div>
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','EuroLeague','Soccer','International'].map(s=>chip(gNext===s,s)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
@@ -685,13 +688,13 @@ function dayKey(g){const d=g[10]&&g[10].date?new Date(g[10].date):new Date();ret
 function dayLabel(k){const [y,m,d]=k.split('-').map(Number),dt=new Date(y,m-1,d),t0=new Date();t0.setHours(0,0,0,0);const dd=Math.round((dt-t0)/864e5);
  const s=dt.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});return dd===0?'Today':dd===1?'Tomorrow':dd===-1?'Yesterday':s;}
 function renderByDate(){
- const L=GAMES.list,fs=L.filter(g=>gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport);
+ const L=GAMES.list,fs=L.filter(g=>inSport(g,gSport));
  const cnt=new Map();for(const g of fs){const k=dayKey(g);cnt.set(k,(cnt.get(k)||0)+1);}const keys=[...cnt.keys()].sort();
  const today=dayKey([0,0,0,0,0,0,0,0,0,0,{date:new Date().toISOString()}]);
  if(!gDate||!cnt.has(gDate))gDate=cnt.has(today)?today:(keys.find(k=>k>today)||keys[keys.length-1]||today);
- const sports=['All','NBA','NFL','EuroLeague','Soccer'],chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
+ const sports=['All','NBA','NFL','EuroLeague','Soccer','International'],chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
- const lgs=gSport==='Soccer'?['UCL','EPL','La Liga','MLS']:[gSport],nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'};
+ const lgs=gSport==='Soccer'?CLUBS:gSport==='International'?INTL:[gSport],nm=LGNAME;
  $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
  <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
  ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
@@ -701,17 +704,17 @@ function renderGames(){
  if(gView==='next')return renderNext();
  if(gSport!=='All')return renderByDate();
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
- const sports=['All','NBA','NFL','EuroLeague','Soccer'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
- const f=L.filter(g=>(gSport==='All'||(gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport))&&(gStat==='All'||g[1]===gStat));
+ const sports=['All','NBA','NFL','EuroLeague','Soccer','International'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
+ const f=L.filter(g=>inSport(g,gSport)&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;renderByDate.scrolled=0;
- $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">7</div><div class="s">NBA · NFL · EuroLeague · UCL · EPL · La Liga · MLS</div></div></div>
+ $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">11</div><div class="s">NBA · NFL · EuroLeague · clubs · internationals</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
- ${f.length?['NBA','NFL','EuroLeague','UCL','EPL','La Liga','MLS'].map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'}[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
+ ${f.length?LGORDER.map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm=LGNAME[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
-const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1']];
+const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1'],['Friendlies','soccer/fifa.friendly'],['UEFA NL','soccer/uefa.nations'],['CONCACAF NL','soccer/concacaf.nations.league'],['AFCON Qual.','soccer/caf.nations_qual']];
 function setFeed(on,txt){const el=$('feed');if(!el)return;el.classList.toggle('on',on);$('feedtxt').textContent=txt;}
 const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=1000;
 function rate(){return 1000;}
