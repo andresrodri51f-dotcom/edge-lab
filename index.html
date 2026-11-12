@@ -143,9 +143,9 @@ table.mt td{vertical-align:middle}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
 .catbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin:0 0 14px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
-.cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.cats{display:flex;gap:4px;flex-wrap:wrap;flex:1 1 520px;min-width:0}
 .cats::-webkit-scrollbar{display:none}
-.cat{flex:none;display:flex;align-items:center;gap:7px;border:0;background:none;color:var(--mut);font:600 14px var(--body);padding:9px 14px;border-radius:11px;cursor:pointer;white-space:nowrap}
+.cat{flex:none;display:flex;align-items:center;gap:6px;border:0;background:none;color:var(--mut);font:600 14px var(--body);padding:8px 11px;border-radius:11px;cursor:pointer;white-space:nowrap}
 .cat .ci{font-size:18px;line-height:1}
 .cat:hover{color:var(--ink);background:var(--surface2)}
 .cat.on{background:var(--accent);color:var(--accent-ink)}
