@@ -1198,7 +1198,29 @@ function renderMatch(ctx,R){
   if(best)pred.push([ctx.lg==='NFL'?'Top passer':'Top scorer',`${best[0]} <span class="hint" style="margin:0">${best[1].toFixed(ctx.lg==='NFL'?0:1)} ${ctx.lg==='NFL'?'yds':'pts'}</span>`]);
  }
  const wp=`<div class="wprow"><div class="hint" style="margin:0">Win probability at the end of the match</div><div class="wpcells">${bH}<b>${pct0(P(hw))}</b>${soc?`<span class="wpsep"></span><b>${pct0(P(dr))}</b>`:''}<span class="wpsep"></span><b>${pct0(P(aw))}</b>${bA}</div></div>`;
- let html=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>`;
+ const POP=[],side=(pO,yes,no)=>pO>=.5?[yes,pO]:[no,1-pO],ovr=(arr,L)=>{let o=0,pu=0;for(let i=0;i<n;i++){if(arr(i)>L)o++;else if(arr(i)===L)pu++;}return o/(n-pu||1);},half=x=>Math.max(.5,Math.round(x-.5)+.5);
+ const bestPlayer=(k,need)=>{let b=null;for(const o of R.P){const hh=o.h[k];if(!hh)continue;const m=meanOf(hh);if(m<(need||0))continue;if(!b||m>b.m)b={name:o.p.name,hh,m};}return b;};
+ const plyOU=(k,lab,need)=>{const b=bestPlayer(k,need);if(!b)return;const L=half(b.m),po=histGE(b.hh,Math.ceil(L));POP.push([lab,`${b.name} ${po>=.5?'Over':'Under'} ${L}`,Math.max(po,1-po)]);};
+ if(soc){const pwin=[[P(hw),h+' win'],[P(dr),'Draw'],[P(aw),a+' win']].sort((p,q)=>q[0]-p[0])[0];POP.push(['Match result (1X2)',pwin[1],pwin[0]]);
+  const bt=share((x,y)=>x>0&&y>0);POP.push(['Both teams to score',...side(bt,'Yes','No')]);
+  POP.push(['Over/Under 2.5 goals',...side(share((x,y)=>x+y>2.5),'Over 2.5','Under 2.5')]);
+  POP.push(['Over/Under 1.5 goals',...side(share((x,y)=>x+y>1.5),'Over 1.5','Under 1.5')]);
+  const dc=[[P(hw)+P(dr),h+' or draw'],[P(aw)+P(dr),a+' or draw'],[P(hw)+P(aw),h+' or '+a]].sort((p,q)=>q[0]-p[0])[0];POP.push(['Double chance',dc[1],dc[0]]);
+  const dnb=P(hw)/(P(hw)+P(aw)||1);POP.push(['Draw no bet',...side(dnb,h,a)]);
+  POP.push(['BTTS & Over 2.5',...side(share((x,y)=>x>0&&y>0&&x+y>2.5),'Yes','No')]);
+  let bs=null;for(const o of R.P){if(!o.h.goals)continue;const g1=histGE(o.h.goals,1);if(!bs||g1>bs[1])bs=[o.p.name,g1];}if(bs&&bs[1]>0)POP.push(['Anytime goalscorer',bs[0],bs[1]]);
+  POP.push([`${h} over 1.5 goals`,...side(share(x=>x>1.5),'Yes','No')]);POP.push([`${a} over 0.5 goals`,...side(share((x,y)=>y>0),'Yes','No')]);
+ }else{POP.push(['Moneyline',...side(P(hw)/(P(hw)+P(aw)||1),h,a)]);
+  const SPR=ctx.st==='live'?null:(ctx.spread!=null?ctx.spread:-half(Math.abs(fm))*Math.sign(fm||1));{const pc=ovr(i=>H[i]-A[i]+SPR,0);POP.push([`Spread (${h} ${SPR>0?'+':''}${SPR})`,pc>=.5?`${h} ${SPR>0?'+':''}${SPR}`:`${a} ${-SPR>0?'+':''}${-SPR}`,Math.max(pc,1-pc)]);}
+  const TL=liveL!=null?liveL:ctx.total!=null?ctx.total:half(ft);{const po=ovr(i=>H[i]+A[i],TL);POP.push([`Total points O/U ${TL}`,po>=.5?`Over ${TL}`:`Under ${TL}`,Math.max(po,1-po)]);}
+  const tH=half(eH),tA=half(eA);{const p1=ovr(i=>H[i],tH),p2=ovr(i=>A[i],tA);POP.push([`${h} team total`,`${p1>=.5?'Over':'Under'} ${tH}`,Math.max(p1,1-p1)],[`${a} team total`,`${p2>=.5?'Over':'Under'} ${tA}`,Math.max(p2,1-p2)]);}
+  if(ctx.lg==='NFL'){plyOU('passYds','QB passing yards',100);plyOU('rushYds','Rushing yards',25);plyOU('recYds','Receiving yards',25);
+   let bt=null;for(const o of R.P){if(!o.h.td)continue;const t1=histGE(o.h.td,1);if(!bt||t1>bt[1])bt=[o.p.name,t1];}if(bt)POP.push(['Anytime touchdown',bt[0],bt[1]]);}
+  else{plyOU('pts','Player points',8);plyOU('reb','Player rebounds',4);plyOU('ast','Player assists',3);plyOU('pra','Pts + Reb + Ast',15);
+   const dd=share((x,y)=>Math.abs(x-y)>=10);POP.push(['Win by 10+',dd>=.5?'Yes':'No',Math.max(dd,1-dd)]);}
+ }
+ const popHTML=POP.length?`<div class="card msec pred"><h2 class="ptitle">Most popular bets</h2><div class="hint" style="margin:0 0 8px">The bets people place most on ${ctx.lg} games, with the model’s pick and its chance of hitting</div>${POP.map(([m,pk,pp])=>`<div class="prow"><span>${m}</span><b>${pk} <span class="hint" style="margin:0">${(pp*100).toFixed(0)}%</span></b></div>`).join('')}</div>`:'';
+ let html=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>`+popHTML;
  // result probability grid
  let grid='';
  if(soc){const M=[...Array(6)].map(()=>new Array(6).fill(0));for(let i=0;i<n;i++){const x=Math.min(5,H[i]),y=Math.min(5,A[i]);M[x][y]++;}let mx=0;for(const r of M)for(const c of r)mx=Math.max(mx,c);
@@ -1355,7 +1377,15 @@ function renderAlt(ctx,R){
   const idx=[...Array(mx+1).keys()];
   grid=`<table class="rgrid"><tbody>${idx.slice().reverse().map(x=>`<tr><th>${x}${x===mx?'+':''}</th>${idx.map(y=>{const p=M[x][y]/n;return `<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(M[x][y]/mm*85)}%,var(--surface2))">${p<.001?'&lt;0.1%':(p*100).toFixed(1)+'%'}</div></td>`;}).join('')}</tr>`).join('')}<tr><th></th>${idx.map(y=>`<th>${y}${y===mx?'+':''}</th>`).join('')}</tr></tbody></table><div class="hint" style="text-align:center">Rows: ${h} ${unit} · Columns: ${a} ${unit} (final, including ${ctx.lg==='NHL'?'overtime':'extra innings'})</div>`;}
  const wp=`<div class="wprow"><div class="hint" style="margin:0">Win probability at the end of the match</div><div class="wpcells">${bH}<b>${pct0(pH)}</b><span class="wpsep"></span><b>${pct0(pA)}</b>${bA}</div></div>`;
- $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>
+ const POP=[],sd=(p,y,no)=>p>=.5?[y,p]:[no,1-p],ou=(fn,L)=>{let o=0,pu=0;for(let i=0;i<n;i++){const v=fn(H[i],A[i]);if(v>L)o++;else if(v===L)pu++;}return o/(n-pu||1);};
+ if(ctx.lg==='Tennis'){POP.push(['Match winner',...sd(pH,h,a)]);const L=ctx.bo===5?3.5:2.5;POP.push([`Total sets O/U ${L}`,...sd(ou((x,y)=>x+y,L),'Over '+L,'Under '+L)]);const f1=pH>=.5?h:a;POP.push([`${f1} -1.5 sets`,...sd(share((x,y)=>pH>=.5?x-y>=2:y-x>=2),'Yes','No')]);}
+ else{const nh=ctx.lg==='NHL';POP.push(['Moneyline',...sd(pH,h,a)]);const fav=pH>=.5?h:a,dog=pH>=.5?a:h,pl=pH>=.5?share((x,y)=>x-y>=2):share((x,y)=>y-x>=2);POP.push([`${nh?'Puck':'Run'} line ±1.5`,pl>=.5?`${fav} -1.5`:`${dog} +1.5`,Math.max(pl,1-pl)]);
+  const L=ctx.line!=null?ctx.line:Math.round(ft-.5)+.5;POP.push([`Total ${nh?'goals':'runs'} O/U ${L}`,...sd(ou((x,y)=>x+y,L),'Over '+L,'Under '+L)]);
+  const tl=nh?2.5:3.5;POP.push([`${h} team total ${tl}`,...sd(ou(x=>x,tl),'Over','Under')],[`${a} team total ${tl}`,...sd(ou((x,y)=>y,tl),'Over','Under')]);
+  if(nh){POP.push(['Both teams 2+ goals',...sd(share((x,y)=>x>=2&&y>=2),'Yes','No')],['Goes to overtime',...sd(R.ot,'Yes','No')]);}
+  else{POP.push(['Both teams 3+ runs',...sd(share((x,y)=>x>=3&&y>=3),'Yes','No')],['Extra innings',...sd(R.ot,'Yes','No')]);}}
+ const popHTML=`<div class="card msec pred"><h2 class="ptitle">Most popular bets</h2><div class="hint" style="margin:0 0 8px">The bets people place most on ${ctx.lg} games, with the model’s pick and its chance of hitting</div>${POP.map(([m,pk,pp])=>`<div class="prow"><span>${m}</span><b>${pk} <span class="hint" style="margin:0">${(pp*100).toFixed(0)}%</span></b></div>`).join('')}</div>`;
+ $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>${popHTML}
  <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
  <div class="hint">${ctx.notes.join(' ')}</div>`;
 }
