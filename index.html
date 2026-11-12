@@ -800,7 +800,7 @@ function buildList(){
    if(st==='live'&&total==null)needLine(lg,p,e.id);
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:p,date:e.date,det,natTV:((c.geoBroadcasts||[]).filter(b=>b.market&&b.market.type==='National'&&b.media&&!/League Pass|NBA TV|NHL Network|MLB Network|NFL Network/i.test(b.media.shortName||'')).map(b=>b.media.shortName)[0])||'',pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+    {id:e.id,path:p,date:e.date,det,natTV:((c.geoBroadcasts||[]).filter(b=>b.market&&b.market.type==='National'&&b.media&&!/League Pass|NBA TV|NHL Network|MLB Network|ESPN\+|NHL Power Play|Center Ice|Extra Innings/i.test(b.media.shortName||'')).map(b=>b.media.shortName)[0])||'',pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
  return list.concat(elList(),tennisList());
 }
 async function pullFeed(){
