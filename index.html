@@ -133,6 +133,9 @@ tr:last-child td{border-bottom:0}
   </div>
   <div class="settings">
     <span class="feed" id="feed"><i></i><span id="feedtxt">Snapshot</span></span>
+    <label for="rate">Scores every
+      <select id="rate" onchange="schedule();setFeed(FEED_ON,FEED_ON?'Live · every '+(rate()/1000)+'s':'Snapshot');if(LIVE&&LIVE.timer){clearInterval(LIVE.timer);LIVE.timer=setInterval(refreshLive,Math.max(3000,rate()));}"><option value="1000" selected>1 sec</option><option value="5000">5 sec</option><option value="15000">15 sec</option><option value="30000">30 sec</option></select>
+    </label>
     <label for="nsims">Simulations
       <select id="nsims"><option value="10000">10,000</option><option value="20000">20,000</option><option value="50000" selected>50,000</option><option value="100000">100,000</option></select>
     </label>
@@ -562,12 +565,12 @@ function openLive(i){
    <div><h3>Pregame projection</h3>${f('pa',a+' projected pts',pA.toFixed(1),.1)}${f('ph',h+' projected pts',pH.toFixed(1),.1)}<div class="hint" id="lv_src">${src}</div></div>
    <div><h3>Live odds (0 = skip)</h3>${f('mlA',a+' ML',0)}${f('mlH',h+' ML',0)}${f('spr','Home live spread',0,.5)}${f('sprA',a+' spread odds',-110)}${f('sprH',h+' spread odds',-110)}${f('tot','Live total',0,.5)}${f('ovr','Over odds',-110)}${f('und','Under odds',-110)}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><input type="checkbox" id="lv_auto" ${X.id?'checked':''}><label for="lv_auto" class="hint" style="margin:0;color:var(--ink)"><b>Auto mode</b>: pull score, clock, team form and lineups every 30 seconds${X.id?'':' (open the downloaded live file to use this)'}</label></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><input type="checkbox" id="lv_auto" ${X.id?'checked':''}><label for="lv_auto" class="hint" style="margin:0;color:var(--ink)"><b>Auto mode</b>: pull score, clock, team form and lineups every few seconds${X.id?'':' (open the downloaded live file to use this)'}</label></div>
   <div id="liveauto"></div>
   <div class="run"><button class="btn" onclick="runLive()">Simulate rest of game</button><button class="btn ghost" onclick="pullLatest()">Use latest score</button><a class="btn ghost" style="text-decoration:none" href="https://www.realapp.com/${lg.toLowerCase()}">Check live score on Real ↗</a></div>
   <div id="liveout"></div></div>`;
  $('livebox').style.display='block';runLive();
- if(X.id){refreshLive();LIVE.timer=setInterval(refreshLive,30000);}
+ if(X.id){refreshLive();LIVE.timer=setInterval(refreshLive,Math.max(3000,rate()));}
 }
 function fixClock(c){c=String(c||'0:00');if(c.includes(':'))return c;const s=Math.round(parseFloat(c)||0);return '0:'+String(s).padStart(2,'0');}
 function pullLatest(){const g=GAMES.list.find(z=>z[0]+'|'+z[2]+'|'+z[3]===LIVE.key);if(!g)return;const X=g[10]||{};$('lv_as').value=g[4]??0;$('lv_hs').value=g[5]??0;if(X.period){$('lv_q').value=Math.min(4,X.period);$('lv_clk').value=fixClock(X.clock);}else{const [q,c]=parseClock(g[6]);$('lv_q').value=q;if(c)$('lv_clk').value=c;}runLive();}
@@ -639,17 +642,18 @@ function renderGames(){
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  $('p-games').innerHTML=`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">6</div><div class="s">NBA · NFL · UCL · EPL · La Liga · MLS</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
- <div class="hint" style="margin-bottom:14px">${FEED_ON?'Scores update automatically every 30 seconds from ESPN’s free scoreboard.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} <b style="color:var(--ink)">Live sim</b> (NBA/NFL) re-simulates the rest of a game from the current score so you can check live odds.</div>
+ <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second (other leagues every minute) from ESPN’s free scoreboard.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} <b style="color:var(--ink)">Live sim</b> (NBA/NFL) re-simulates the rest of a game from the current score so you can check live odds.</div>
  <div class="ggrid">${f.map(g=>gameCard(g,L.indexOf(g))).join('')||'<div class="hint">No games match this filter.</div>'}</div>`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
 const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1']];
 function setFeed(on,txt){const el=$('feed');if(!el)return;el.classList.toggle('on',on);$('feedtxt').textContent=txt;}
-async function pullFeed(){
- let res;
- try{res=await Promise.all(FEEDS.map(([lg,p])=>fetch(`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>[lg,d]).catch(()=>[lg,null])));}catch(e){res=[];}
- const list=[];let ok=0;
- for(const [lg,d] of res){if(!d||!d.events)continue;ok++;const C=LCFG[lg];
+const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=1000;
+function rate(){const el=$('rate');return el?+el.value:1000;}
+async function fetchLeague(lg,p){try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d&&d.events)FCACHE[lg]=d;}catch(e){}}
+function buildList(){
+ const list=[];
+ for(const [lg,p] of FEEDS){const d=FCACHE[lg];if(!d)continue;const C=LCFG[lg];
   for(const e of d.events){const c=e.competitions&&e.competitions[0];if(!c||!c.competitors)continue;
    const H=c.competitors.find(t=>t.homeAway==='home'),A=c.competitors.find(t=>t.homeAway==='away');if(!H||!A)continue;
    const s=e.status&&e.status.type?e.status.type.state:'pre',st=s==='in'?'live':s==='post'?'final':'up';
@@ -660,12 +664,27 @@ async function pullFeed(){
    let pr=0;if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:FEEDS.find(z=>z[0]===lg)[1],ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
- if(!ok){if(!FEED_ON)setFeed(false,'Snapshot');return false;}
- GAMES.list=list;FEED_ON=true;GAMES.asof='updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
- setFeed(true,'Live feed');renderGames();return true;
+    {id:e.id,path:p,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+ return list;
 }
-(async()=>{if(await pullFeed())setInterval(pullFeed,30000);})();
+async function pullFeed(){
+ if(busy)return !!lastOk;busy=true;
+ const now=Date.now(),full=now-lastFull>60000||!Object.keys(FCACHE).length;
+ const liveLg=new Set(GAMES.list.filter(g=>g[1]==='live').map(g=>g[0]));
+ const todo=FEEDS.filter(([lg])=>full||liveLg.has(lg));
+ await Promise.all(todo.map(([lg,p])=>fetchLeague(lg,p)));
+ if(full&&Object.keys(FCACHE).length)lastFull=now;
+ busy=false;
+ if(!Object.keys(FCACHE).length){setFeed(false,'Snapshot');return false;}
+ GAMES.list=buildList();FEED_ON=true;lastOk=Date.now();
+ GAMES.asof='updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
+ setFeed(true,'Live · every '+(rate()/1000)+'s');
+ if($('p-games').classList.contains('on'))renderGames();
+ return true;
+}
+let feedTimer=null;
+function schedule(){clearTimeout(feedTimer);feedTimer=setTimeout(async()=>{await pullFeed();schedule();},rate());}
+(async()=>{if(await pullFeed())schedule();})();
 
 /* ---------- auto live model: in-game form + who is on the floor (NBA), live score/clock (NBA/NFL) ---------- */
 const PLAYER={};
@@ -743,7 +762,7 @@ function autoPanel(M,S){
   <tr><td>Players out / foul trouble</td><td>${fmt(M.lA.rest)}</td><td>${fmt(M.lH.rest)}</td><td>net points over the rest of the game</td></tr>
   <tr><td><b>Projected points still to come</b></td><td><b>${M.mA.toFixed(1)}</b></td><td><b>${M.mH.toFixed(1)}</b></td><td>${S.espnHome!=null?`ESPN's own win model: ${h} ${(S.espnHome*100).toFixed(0)}%`:''}</td></tr>
   </tbody></table></div>
-  <div class="hint">Player values come from season averages (points, assists, rebounds, steals, blocks, turnovers per minute) compared with a replacement-level player. Updates every 30 seconds.</div></div>`;
+  <div class="hint">Player values come from season averages (points, assists, rebounds, steals, blocks, turnovers per minute) compared with a replacement-level player. Updates every few seconds.</div></div>`;
 }
 function toggleOut(id,on){if(on)LIVE.outs.add(id);else LIVE.outs.delete(id);runLive();}
 
