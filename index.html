@@ -1323,12 +1323,15 @@ function renderAlt(ctx,R){
 
 /* ---------- search: leagues, teams, players + their stats (ESPN) ---------- */
 let SQT=null;
+const ALLOWED=new Set(['eng.1','esp.1','ita.1','ger.1','fra.1','uefa.champions','usa.1','fifa.friendly','uefa.nations','concacaf.nations.league','caf.nations_qual','fifa.world','fifa.worldq.uefa','fifa.worldq.conmebol','fifa.worldq.concacaf','nba','mlb','nfl','nhl','atp','wta']);
+const okRes=c=>ALLOWED.has(c.defaultLeagueSlug)&&!/U-?1[5-9]|U-?2[0-3]|Under-?\d|Youth|Women|Reserves|\bII\b|\bB$/i.test(c.displayName||'');
 function openSearch(){$('searchbox').style.display='block';document.body.style.overflow='hidden';
- $('searchbox').innerHTML=`<div class="mwrap"><div class="card mhead"><div style="display:flex;gap:10px;align-items:center"><span style="font-size:20px">🔍</span><input id="sq" type="search" placeholder="Search leagues, teams or players…" autocomplete="off" style="flex:1;width:auto;text-align:left;font:600 16px var(--body);padding:12px 14px"><button class="btn ghost" style="padding:8px 12px" onclick="closeSearch()" aria-label="Close">✕</button></div></div><div id="sres"><div class="hint">Try “Haaland”, “Lakers”, “Premier League”, “Shai”, “Real Madrid”…</div></div></div>`;
+ $('searchbox').innerHTML=`<div class="mwrap"><div class="card mhead"><div style="display:flex;gap:10px;align-items:center"><span style="font-size:20px">🔍</span><input id="sq" type="search" placeholder="Search leagues, teams or players…" autocomplete="off" style="flex:1;width:auto;text-align:left;font:600 16px var(--body);padding:12px 14px"><button class="btn ghost" style="padding:8px 12px" onclick="closeSearch()" aria-label="Close">✕</button></div></div><div id="sres"><div class="hint">Search players, teams and leagues from FC (top 5 leagues, Champions League, MLS, internationals), NBA, MLB, NFL, NHL and tennis.</div></div></div>`;
  const q=$('sq');q.focus();q.oninput=()=>{clearTimeout(SQT);SQT=setTimeout(()=>runSearch(q.value.trim()),280);};}
 function closeSearch(){$('searchbox').style.display='none';document.body.style.overflow='';}
 async function runSearch(q){if(q.length<2){$('sres').innerHTML='<div class="hint">Type at least 2 letters.</div>';return;}
- const d=await getJSON(`https://site.web.api.espn.com/apis/search/v2?query=${encodeURIComponent(q)}&limit=8&type=player,team,league`);
+ const d=await getJSON(`https://site.web.api.espn.com/apis/search/v2?query=${encodeURIComponent(q)}&limit=40&type=player,team,league`);
+ if(d&&d.results)for(const g of d.results)g.contents=(g.contents||[]).filter(okRes).slice(0,8);
  if(!d||!d.results){$('sres').innerHTML='<div class="hint">Search isn’t available right now.</div>';return;}
  const lab={player:'Players',team:'Teams',league:'Leagues'};
  const groups=d.results.filter(g=>lab[g.type]&&(g.contents||[]).length);
