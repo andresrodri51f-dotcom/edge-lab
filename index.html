@@ -779,7 +779,7 @@ const SNAP=[];GAMES.list=[];
 let gSport='FC',gStat='All',FEED_ON=false;
 function hashColor(s){let h=0;for(const ch of s)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 36%)`;}
 function abbrOf(n){const w=n.replace(/[^A-Za-z0-9 ]/g,'').split(' ').filter(Boolean);return (w.length>1?w.map(x=>x[0]).join(''):n.slice(0,3)).slice(0,3).toUpperCase();}
-function badgeHTML(name,abbr,col,logo){if(logo)return `<span class="badge tl"><img src="${logo}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.outerHTML=badgeHTML('${String(name).replace(/'/g,'')}','${abbr||''}','${col||''}')"></span>`;let bg=col?'#'+col:hashColor(name),fg='#fff';
+function badgeHTML(name,abbr,col,logo){if(logo){const dk=/teamlogos\/(nba|nfl|nhl|mlb)\/500\//.test(logo)?logo.replace('/500/','/500-dark/'):logo;return `<span class="badge tl"><img src="${dk}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="if(this.src!=='${logo}'){this.src='${logo}';}else this.parentNode.outerHTML=badgeHTML('${String(name).replace(/'/g,'')}','${abbr||''}','${col||''}')"></span>`;}let bg=col?'#'+col:hashColor(name),fg='#fff';
  if(col){const r=parseInt(col.slice(0,2),16),g=parseInt(col.slice(2,4),16),b=parseInt(col.slice(4,6),16);if(.299*r+.587*g+.114*b>186)fg='#111a28';}
  return `<span class="badge" style="background:${bg};color:${fg}">${abbr||abbrOf(name)}</span>`;}
 function ncdf(x){const t=1/(1+.2316419*Math.abs(x)),d=.3989423*Math.exp(-x*x/2),p=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return x>0?1-p:p;}
