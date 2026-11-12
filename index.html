@@ -275,6 +275,7 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .pro-list{list-style:none;padding:0;margin:16px auto;max-width:360px;text-align:left}.pro-list li{padding:10px 0;border-top:1px solid var(--line)}.pro-list li::before{content:"✓  ";color:var(--accent);font-weight:800}
 .tvchip{font:600 11px var(--body);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}.gopen2{font:700 12px var(--body);color:var(--accent)}
 .lvn{background:var(--live);color:#fff;border-radius:99px;font:700 10px var(--body);padding:1px 6px;margin-left:2px}.cat.on .lvn{background:#04140b;color:var(--accent)}
+.hlrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.hlth{flex:none;width:150px;border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:0;overflow:hidden;cursor:pointer;color:var(--ink);text-align:left}.hlth.on{border-color:var(--accent)}.hlth span{display:block;aspect-ratio:16/9;background:#000 center/cover;position:relative}.hlth i{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.75);color:#fff;font:600 10px var(--body);font-style:normal;padding:1px 5px;border-radius:4px}.hlth small{display:block;padding:6px 7px;font-size:11px;line-height:1.25;max-height:3.9em;overflow:hidden}
 </style>
 
 </head>
@@ -1077,7 +1078,7 @@ async function openMatch(idx){
  let sum=null;if(X.id&&X.path&&lg!=='Tennis'&&lg!=='UFC')sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
  if(!MATCH||MATCH.idx!==idx)return;
  MATCH.sum=sum;
- try{$('minfo').innerHTML=infoHTML(g,sum);}catch(e){}
+ try{$('minfo').innerHTML=(st==='final'?hlHTML(g,sum):'')+infoHTML(g,sum);}catch(e){}
  if(st!=='final'&&!isPro()){$('mbody').innerHTML=lockHTML(g);if(st==='live'){const K=gameKey(g),hb=()=>liveTick(K,hb,5000);hb();}return;}
  try{
   if(lg==='UFC')return ufcOpen(g,idx);
@@ -1477,6 +1478,23 @@ function renderAlt(ctx,R){
 }
 
 
+
+
+/* ---------- highlights for finished games (ESPN clips + YouTube search) ---------- */
+function hlHTML(g,sum){const [lg,st,a,h]=g,X=g[10]||{};
+ const vids=((sum&&sum.videos)||[]).map(v=>{const L=v.links||{},S=L.source||{};return {t:v.headline||'',th:v.thumbnail||'',mp4:(S.HD&&S.HD.href)||S.href||'',web:(L.web&&L.web.href)||'',dur:v.duration||0};}).filter(v=>v.mp4||v.web);
+ window._HL=vids;
+ const d=X.date?new Date(X.date):null,q=encodeURIComponent(`${a} vs ${h} highlights ${d?d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):''}`);
+ const yt=`<a class="btn ghost" style="display:inline-flex;align-items:center;gap:8px;padding:10px 14px" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener"><span style="background:#ff0033;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px">▶</span> Watch on YouTube</a>`;
+ const mm=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+ if(!vids.length)return `<div class="card msec"><h2 class="ptitle">Highlights</h2><div class="hint" style="margin:0 0 10px">ESPN hasn’t posted clips for this game.</div>${yt}</div>`;
+ const v0=vids[0];
+ return `<div class="card msec"><h2 class="ptitle">Highlights</h2>
+ <video id="hlv" controls playsinline preload="none" poster="${v0.th}" src="${v0.mp4}" style="width:100%;border-radius:12px;background:#000;aspect-ratio:16/9;display:block"></video>
+ <div id="hlt" style="font-weight:700;margin:8px 0 10px">${v0.t}</div>
+ ${vids.length>1?`<div class="hlrow">${vids.map((v,i)=>`<button class="hlth${i===0?' on':''}" onclick="playHL(${i},this)"><span style="background-image:url('${v.th}')"><i>${v.dur?mm(v.dur):'▶'}</i></span><small>${v.t}</small></button>`).join('')}</div>`:''}
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${yt}${v0.web?`<a class="btn ghost" style="padding:10px 14px" href="${v0.web}" target="_blank" rel="noopener">More on ESPN ↗</a>`:''}</div></div>`;}
+function playHL(i,btn){const v=(window._HL||[])[i];if(!v)return;const el=$('hlv');if(!el)return;if(v.mp4){el.poster=v.th;el.src=v.mp4;el.play().catch(()=>{});}else window.open(v.web,'_blank');$('hlt').textContent=v.t;document.querySelectorAll('.hlth').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');el.scrollIntoView({block:'center',behavior:'smooth'});}
 
 /* ---------- free game info (venue, referee, form, top performers, injuries) + Pro paywall ---------- */
 const PRO_HASH='342de20d7e29e80fd597cf9399965831dd95f12829055a0ece1aeb7b41887efe',PRO_PRICE='$25/month',PRO_SKU='edge_pro_monthly';
