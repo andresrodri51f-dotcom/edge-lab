@@ -1245,10 +1245,10 @@ function renderMatch(ctx,R){
  const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td>${x.proj}</td><td>${x.range}</td></tr>`;
  const anyList=list.filter(x=>x.any).slice(0,24),mainList=list.filter(x=>!x.any);
  const propRows=mainList.slice(0,50).map(rowH),moreRows=mainList.slice(50).map(rowH);
- const bk=BOOKS.find(b=>b.k===getBook())||BOOKS[0];
+ const bk=BOOKS[0];
  const anyRow=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td><b style="color:var(--good)">${amer(x.p*.97)}</b></td></tr>`;
  const anyHTML=anyList.length?`<div class="card msec"><h3>Anytime props · goals, assists, bookings, touchdowns, sacks</h3>
-  <div class="bookbar"><span class="hint" style="margin:0">Your sportsbook:</span>${BOOKS.map(b=>`<button class="bookbtn${b.k===bk.k?' on':''}" onclick="setBook('${b.k}')"><span class="bdot" style="background:${b.c}"></span>${b.n}</button>`).join('')}<a class="btn" style="padding:8px 14px;font-size:13px;margin-left:auto" href="${bk.u}" target="_blank" rel="noopener">Open ${bk.n} ↗</a></div>
+  <div class="bookbar"><span class="hint" style="margin:0"><span class="bdot" style="background:${bk.c}"></span> DraftKings</span><a class="btn" style="padding:8px 14px;font-size:13px;margin-left:auto" href="${bk.u}" target="_blank" rel="noopener">Open ${bk.n} ↗</a></div>
   <div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Bet at ${bk.n} if better than</th></tr></thead><tbody>${anyList.map(anyRow).join('')}</tbody></table></div>
   <div class="hint">Sorted by chance. The free feed doesn’t carry ${bk.n}’s prices, so compare in the app: if ${bk.n} offers odds better than the green number, the bet has value (the green number already leaves about 3% room for the model’s error).</div></div>`:'';
   let dkProps='';
