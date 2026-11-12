@@ -1220,7 +1220,7 @@ function renderMatch(ctx,R){
    const dd=share((x,y)=>Math.abs(x-y)>=10);POP.push(['Win by 10+',dd>=.5?'Yes':'No',Math.max(dd,1-dd)]);}
  }
  const popHTML=POP.length?`<div class="card msec pred"><h2 class="ptitle">Most popular bets</h2><div class="hint" style="margin:0 0 8px">The bets people place most on ${ctx.lg} games, with the model’s pick and its chance of hitting</div>${POP.map(([m,pk,pp])=>`<div class="prow"><span>${m}</span><b>${pk} <span class="hint" style="margin:0">${(pp*100).toFixed(0)}%</span></b></div>`).join('')}</div>`:'';
- let html=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>`+popHTML;
+ let html=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>`;
  // result probability grid
  let grid='';
  if(soc){const M=[...Array(6)].map(()=>new Array(6).fill(0));for(let i=0;i<n;i++){const x=Math.min(5,H[i]),y=Math.min(5,A[i]);M[x][y]++;}let mx=0;for(const r of M)for(const c of r)mx=Math.max(mx,c);
@@ -1385,7 +1385,7 @@ function renderAlt(ctx,R){
   if(nh){POP.push(['Both teams 2+ goals',...sd(share((x,y)=>x>=2&&y>=2),'Yes','No')],['Goes to overtime',...sd(R.ot,'Yes','No')]);}
   else{POP.push(['Both teams 3+ runs',...sd(share((x,y)=>x>=3&&y>=3),'Yes','No')],['Extra innings',...sd(R.ot,'Yes','No')]);}}
  const popHTML=`<div class="card msec pred"><h2 class="ptitle">Most popular bets</h2><div class="hint" style="margin:0 0 8px">The bets people place most on ${ctx.lg} games, with the model’s pick and its chance of hitting</div>${POP.map(([m,pk,pp])=>`<div class="prow"><span>${m}</span><b>${pk} <span class="hint" style="margin:0">${(pp*100).toFixed(0)}%</span></b></div>`).join('')}</div>`;
- $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>${popHTML}
+ $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>
  <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
  <div class="hint">${ctx.notes.join(' ')}</div>`;
 }
