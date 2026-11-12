@@ -826,6 +826,22 @@ const MILE={pts:[10,15,20,25,30,35,40],reb:[4,6,8,10,12,15],ast:[2,4,6,8,10,12],
 const SLAB={pts:'Points',reb:'Rebounds',ast:'Assists',pra:'Pts+Reb+Ast',passYds:'Passing yards',passTD:'Passing TDs',rushYds:'Rushing yards',recYds:'Receiving yards',rec:'Receptions',td:'Anytime TD',goals:'Goals'};
 const LEN={pts:121,reb:41,ast:41,pra:161,passYds:701,passTD:9,rushYds:301,recYds:301,rec:21,td:6,goals:6};
 
+const PROPMAP={'Total Points':'pts','Total Rebounds':'reb','Total Assists':'ast','Total Points, Rebounds, and Assists':'pra','Points Milestones':'pts','Rebounds Milestones':'reb','Assists Milestones':'ast','Points + Assists + Rebounds Milestones':'pra',
+ 'Total Passing Yards (incl. overtime)':'passYds','Total Rushing Yards (incl. overtime)':'rushYds','Total Receiving Yards (incl. overtime)':'recYds','Total Receptions (incl. overtime)':'rec','Total Passing Touchdowns (incl. overtime)':'passTD',
+ 'Passing Yards Milestones':'passYds','Rushing Yards Milestones':'rushYds','Receiving Yards Milestones':'recYds','Anytime Touchdown Scorer':'td','Player to score 2 or more touchdowns':'td2'};
+async function fetchProps(X){if(!X||!X.id||!X.path||SOCCER.includes(MATCH&&MATCH.lg))return null;const [sp,lg]=X.path.split('/');
+ const base=`https://sports.core.api.espn.com/v2/sports/${sp}/leagues/${lg}/events/${X.id}/competitions/${X.id}/odds/100/propBets?limit=1000`;
+ const d=await getJSON(base);if(!d)return null;let items=d.items||[];if(d.pageCount>1){const d2=await getJSON(base+'&page=2');if(d2)items=items.concat(d2.items||[]);}
+ const pn=v=>{if(v==null||v==='')return null;const x=parseFloat(String(v).replace('+',''));return isNaN(x)?null:x;};
+ const out=[],groups=new Map();
+ for(const x of items){const t=x.type&&x.type.name,key=PROPMAP[t];if(!key)continue;const m=((x.athlete&&x.athlete.$ref)||'').match(/athletes\/(\d+)/);if(!m)continue;const id=m[1];
+  let price=pn(x.odds&&x.odds.american&&x.odds.american.value);if(price==null)price=pn(x.current&&x.current.over&&x.current.over.american);if(price==null)continue;
+  let tgt=x.odds&&x.odds.total&&x.odds.total.value;if(tgt==null)tgt=x.current&&x.current.target&&x.current.target.value;
+  if(/Milestones|Anytime|2 or more/.test(t)){const N=key==='td'?1:key==='td2'?2:parseFloat(tgt);if(isNaN(N))continue;out.push({id,key:key==='td2'?'td':key,kind:'ms',N,over:price});}
+  else{const L=parseFloat(tgt);if(isNaN(L))continue;const gk=t+'|'+id+'|'+L,g=groups.get(gk);if(!g)groups.set(gk,{id,key,L,over:price});else if(g.under==null)g.under=price;}}
+ for(const g of groups.values())out.push({...g,kind:'ou'});
+ MATCH.propsAt=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+ return out;}
 async function openMatch(idx){
  const g=GAMES.list[idx];if(!g)return;const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
  MATCH={idx,g,lg,a,h,X};
@@ -834,6 +850,7 @@ async function openMatch(idx){
  let sum=null;if(X.id&&X.path)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
  if(!MATCH||MATCH.idx!==idx)return;
  MATCH.sum=sum;
+ if(!SOCCER.includes(lg)&&st!=='final'){try{MATCH.props=await fetchProps(X);}catch(e){MATCH.props=null;}}
  try{
   if(st==='final')return renderFinal(sum);
   const ctx=await buildCtx(g,sum);
@@ -908,14 +925,14 @@ async function buildCtx(g,sum){
    for(const [side,T] of [['a',S.away],['h',S.home]])for(const p of T.players.filter(p=>!p.dnp)){const q=PLAYER[p.id];if(!q||!q.min)continue;
     const out=p.ej||p.pf>=6,ft=p.pf>=5,share=out?0:(q.min/48)*(ft?.5:1),remMin=share*left;
     const bs=(sum.boxscore.players||[]).find(z=>z.team.id===T.id);let cr=0,ca2=0;if(bs){const s0=bs.statistics[0],ai=s0.athletes.find(z=>z.athlete.id===p.id);if(ai){cr=nnum(ai.stats[s0.names.indexOf('REB')]);ca2=nnum(ai.stats[s0.names.indexOf('AST')]);}}
-    ctx.players.push({name:p.name,side,kind:'nba',min:q.min,cur:{pts:p.pts,reb:cr,ast:ca2},rem:{pts:q.ppg/q.min*remMin,reb:q.reb/q.min*remMin,ast:q.ast/q.min*remMin},tag:out?'out':ft?'foul trouble':p.active?'on floor':''});}
+    ctx.players.push({id:p.id,name:p.name,side,kind:'nba',min:q.min,cur:{pts:p.pts,reb:cr,ast:ca2},rem:{pts:q.ppg/q.min*remMin,reb:q.reb/q.min*remMin,ast:q.ast/q.min*remMin},tag:out?'out':ft?'foul trouble':p.active?'on floor':''});}
   }else if(X.aid&&X.hid){
    for(const [side,tid] of [['a',X.aid],['h',X.hid]]){const ros=await nbaRoster(tid);
     const list=ros.map(r=>({id:r.id,name:r.shortName||r.displayName,inj:((r.injuries||[])[0]||{}).status||''})).filter(r=>!/^out$/i.test(r.inj));
     await Promise.all(list.map(r=>playerImp(r.id)));
     const top=list.filter(r=>PLAYER[r.id]&&PLAYER[r.id].min>=12).sort((p,q)=>PLAYER[q.id].min-PLAYER[p.id].min).slice(0,8);
     const tm=side==='a'?mA:mH,scale=Math.sqrt(tm/114);
-    for(const r of top){const q=PLAYER[r.id],fac=/day|quest|doubt/i.test(r.inj)?.5:1;ctx.players.push({name:r.name,side,kind:'nba',min:q.min,cur:{pts:0,reb:0,ast:0},rem:{pts:q.ppg*scale*fac*ctx.f,reb:q.reb*fac*ctx.f,ast:q.ast*scale*fac*ctx.f},tag:fac<1?r.inj:''});}}
+    for(const r of top){const q=PLAYER[r.id],fac=/day|quest|doubt/i.test(r.inj)?.5:1;ctx.players.push({id:r.id,name:r.name,side,kind:'nba',min:q.min,cur:{pts:0,reb:0,ast:0},rem:{pts:q.ppg*scale*fac*ctx.f,reb:q.reb*fac*ctx.f,ast:q.ast*scale*fac*ctx.f},tag:fac<1?r.inj:''});}}
    ctx.notes.push('Players: season averages; injured players removed, questionable players at half minutes.');
   }
  }
@@ -923,9 +940,9 @@ async function buildCtx(g,sum){
   for(const T of sum.leaders){const side=T.team&&T.team.abbreviation===X.ha?'h':T.team&&T.team.abbreviation===X.aa?'a':null;if(!side)continue;
    const games=Math.max(1,gp(side==='a'?X.recA:X.recH)),cat=n=>(T.leaders||[]).find(c=>c.name===n),L=n=>{const c=cat(n);return c&&c.leaders&&c.leaders[0];};
    const tm=side==='a'?mA:mH;const f=ctx.f;
-   const ps=L('passingYards');if(ps)ctx.players.push({name:ps.athlete.displayName,side,kind:'qb',tm,y:numIn(ps.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ps.displayValue,/([\d.]+)\s*TD/)/games*f});
-   const ru=L('rushingYards');if(ru)ctx.players.push({name:ru.athlete.displayName,side,kind:'rb',tm,y:numIn(ru.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ru.displayValue,/([\d.]+)\s*TD/)/games*f});
-   const re=L('receivingYards');if(re)ctx.players.push({name:re.athlete.displayName,side,kind:'wr',tm,y:numIn(re.displayValue,/([\d.]+)\s*YDS/)/games*f,r:numIn(re.displayValue,/([\d.]+)\s*REC/)/games*f,t:numIn(re.displayValue,/([\d.]+)\s*TD/)/games*f});}
+   const ps=L('passingYards');if(ps)ctx.players.push({id:ps.athlete.id,name:ps.athlete.displayName,side,kind:'qb',tm,y:numIn(ps.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ps.displayValue,/([\d.]+)\s*TD/)/games*f});
+   const ru=L('rushingYards');if(ru)ctx.players.push({id:ru.athlete.id,name:ru.athlete.displayName,side,kind:'rb',tm,y:numIn(ru.displayValue,/([\d.]+)\s*YDS/)/games*f,t:numIn(ru.displayValue,/([\d.]+)\s*TD/)/games*f});
+   const re=L('receivingYards');if(re)ctx.players.push({id:re.athlete.id,name:re.athlete.displayName,side,kind:'wr',tm,y:numIn(re.displayValue,/([\d.]+)\s*YDS/)/games*f,r:numIn(re.displayValue,/([\d.]+)\s*REC/)/games*f,t:numIn(re.displayValue,/([\d.]+)\s*TD/)/games*f});}
   ctx.notes.push(st==='live'?'Player props show the rest of the game only (yards still to come).':'Players: each team’s season leaders, per game.');
  }
  return ctx;
@@ -1016,14 +1033,27 @@ function renderMatch(ctx,R){
    const best=ms.filter(([m,pp])=>pp>=.6).pop();if(best)most.push({t:`${p.name} ${k==='td'||k==='goals'?(best[0]===1?'to score':best[0]+'+ '+SLAB[k].toLowerCase()):best[0]+'+ '+SLAB[k].toLowerCase()}`,p:best[1],prop:1});
    propRows.push(`<tr><td><b>${p.name}</b><div class="hint" style="margin:0">${tn}${p.tag?' · '+p.tag:''}</div></td><td>${SLAB[k]}</td><td><b>${k==='td'||k==='goals'?(histGE(hh,1)*100).toFixed(0)+'%':mean.toFixed(1)}</b></td><td>${k==='td'||k==='goals'?'—':(()=>{const L=Math.max(.5,Math.floor(mean)+.5),po=histGE(hh,Math.ceil(L));return `${L}<div class="hint" style="margin:0">O ${(po*100).toFixed(0)}% · U ${((1-po)*100).toFixed(0)}%</div>`;})()}</td><td>${k==='td'||k==='goals'?'—':lo+'–'+hi}</td><td style="white-space:normal;text-align:left">${ms.map(([m,pp])=>`<span class="pill ${pp>=.6?'bet':pp>=.4?'lean':'pass'}" style="margin:2px">${k==='td'||k==='goals'?(m===1?'Anytime':m+'+'):m+'+'} ${(pp*100).toFixed(0)}%</span>`).join('')}</td></tr>`);}
  }
+  let dkProps='';
+ if(MATCH&&MATCH.props&&MATCH.props.length){const rows=[];
+  for(const pr of MATCH.props){const o=R.P.find(z=>z.p.id&&String(z.p.id)===String(pr.id));if(!o)continue;const hh=o.h[pr.key];if(!hh)continue;const nm=o.p.name;
+   if(pr.kind==='ou'){const pO=histGE(hh,Math.floor(pr.L)+1),io=impl(pr.over),iu=pr.under!=null?impl(pr.under):null;let nO=null,nU=null;if(io&&iu){nO=io/(io+iu);nU=iu/(io+iu);}else if(io)nO=io/1.045;
+    rows.push(mkRow(SLAB[pr.key],`${nm} Over ${pr.L}`,pr.over,nO,pO,0,bl));if(pr.under!=null)rows.push(mkRow(SLAB[pr.key],`${nm} Under ${pr.L}`,pr.under,nU,1-pO,0,bl));}
+   else{const pp=histGE(hh,pr.N),io=impl(pr.over);if(pp<=0.005&&pr.N>3)continue;rows.push(mkRow(SLAB[pr.key]+' milestone',`${nm} ${pr.key==='td'?(pr.N===1?'anytime TD':pr.N+'+ TDs'):pr.N+'+'}`,pr.over,io?io/1.045:null,pp,0,bl));}}
+  if(ctx.st==='live')for(const r of rows){r.ev=null;r.k=0;r.nv=null;r.p=r.c;r.odds=0;}
+  rows.sort((p,q)=>(q.ev??-1e9)-(p.ev??-1e9)||q.c-p.c);
+  const ou=rows.filter(r=>!/milestone/.test(r.market)),ms=rows.filter(r=>/milestone/.test(r.market));
+  if(rows.length)dkProps=`<div class="card msec"><h3>DraftKings player props${ctx.st==='live'?' (closing lines, live chances)':''} · updated ${MATCH.propsAt||''}</h3>
+   <div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings stops posting these at tip-off, so these are the final pregame lines. The chances are live, from the current score.':'Pulled from DraftKings and refreshed every minute until the game starts. Over/under pairs have the vig removed; milestones (one-sided) use about 4.5% vig.'}</div>
+   ${ctx.st==='live'?'':topHTML(rows)}${tableHTML(ou.slice(0,40))}${ms.length?`<details><summary class="hint" style="cursor:pointer;margin-bottom:8px">Milestones (${ms.length})</summary>${tableHTML(ms.slice(0,60))}</details>`:''}</div>`;
+ }
  const mostTop=most.filter(m=>m.p>=.55&&m.p<.97).sort((p,q)=>q.p-p.p).slice(0,12);
  const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
  const propsHTML=propRows.length?`<div class="card msec"><h3>Player props · ${NSIM.toLocaleString()} sims each</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Stat</th><th>Projection</th><th>O/U line</th><th>80% range</th><th style="text-align:left">Chance to reach</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':'Player props need the live feed. Open Edge Lab from the website link.'}</div></div>`;
  const oddsBtn=LCFG[ctx.lg]?`<div class="run"><button class="btn ghost" onclick="openLive(${MATCH.idx})">Compare with my sportsbook odds</button></div>`:'';
- $('mbody').innerHTML=html+dkHTML+mostHTML+`<div class="mgrid">${secs.join('')}</div>`+propsHTML+oddsBtn+(MATCH&&MATCH.sum&&ctx.st!=='live'?`<h3 class="glg" style="margin:18px 0 8px">Season leaders</h3>`+leadersHTML(MATCH.sum):'');
- if(ctx.st==='live'){clearTimeout(MATCH.t);MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},15000);}
+ $('mbody').innerHTML=html+dkHTML+mostHTML+`<div class="mgrid">${secs.join('')}</div>`+dkProps+propsHTML+oddsBtn+(MATCH&&MATCH.sum&&ctx.st!=='live'?`<h3 class="glg" style="margin:18px 0 8px">Season leaders</h3>`+leadersHTML(MATCH.sum):'');
+ clearTimeout(MATCH.t);if(ctx.st==='live'||ctx.st==='up'){MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},ctx.st==='live'?15000:60000);}
 }
-async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
+async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;if(!SOCCER.includes(g[0])&&g[1]!=='final'){const pp=await fetchProps(X);if(pp)MATCH.props=pp;}MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
 
 /* ---------- copy / tabs ---------- */
