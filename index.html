@@ -142,6 +142,11 @@ table.mt td{vertical-align:middle}
 .pbarcell span{display:block;height:100%;background:var(--accent)}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.dstrip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:12px;scrollbar-width:thin}
+.dchip{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:92px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-family:var(--body)}
+.dchip b{font-size:14px}.dchip span{font-size:11px;color:var(--mut)}
+.dchip.today{border-color:var(--accent)}
+.dchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.dchip.on span{color:var(--accent-ink);opacity:.85}
 .ptitle{margin:0;font:700 20px var(--body);letter-spacing:0}
 .pred .prow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
 .pred .prow b{font-weight:600;text-align:right}
@@ -656,7 +661,8 @@ function gameCard(g,idx){
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
  const line=X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl'}[lg]||'soccer');
- return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openMatch(${idx})" onkeydown="if(event.key==='Enter')openMatch(${idx})" aria-label="Open ${a} vs ${h}">
+ const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
+ return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
   ${rows.map(r=>`<div class="trow ${win?(win===r[0]?'win':'lose'):''}"><span class="tname">${badgeHTML(r[0],r[3],r[4])}<b title="${r[0]}">${r[0]}</b>${soc&&r[2]?'<span class="glg" style="font-size:10px">Home</span>':''}</span><span class="score">${r[1]==null?'':r[1]}</span></div>`).join('')}
   <div class="ginfo">${info}</div>${line}${(()=>{if(st!=='live')return '';const ll=liveLine(lg,X,as,hs);return ll?`<div class="gline" style="color:var(--live);font-weight:600">Live O/U ${ll.L} · projected total ${ll.proj.toFixed(1)}${ll.pre!=null?` · pregame ${ll.pre}`:''}</div>`:'';})()}${prob}
@@ -674,15 +680,33 @@ function renderNext(){
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} games</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
+let gDate=null;
+function dayKey(g){const d=g[10]&&g[10].date?new Date(g[10].date):new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dayLabel(k){const [y,m,d]=k.split('-').map(Number),dt=new Date(y,m-1,d),t0=new Date();t0.setHours(0,0,0,0);const dd=Math.round((dt-t0)/864e5);
+ const s=dt.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});return dd===0?'Today':dd===1?'Tomorrow':dd===-1?'Yesterday':s;}
+function renderByDate(){
+ const L=GAMES.list,fs=L.filter(g=>gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport);
+ const cnt=new Map();for(const g of fs){const k=dayKey(g);cnt.set(k,(cnt.get(k)||0)+1);}const keys=[...cnt.keys()].sort();
+ const today=dayKey([0,0,0,0,0,0,0,0,0,0,{date:new Date().toISOString()}]);
+ if(!gDate||!cnt.has(gDate))gDate=cnt.has(today)?today:(keys.find(k=>k>today)||keys[keys.length-1]||today);
+ const sports=['All','NBA','NFL','EuroLeague','Soccer'],chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
+ const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
+ const lgs=gSport==='Soccer'?['UCL','EPL','La Liga','MLS']:[gSport],nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'};
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
+ <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} games</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
+ ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} games</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
+ const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
+}
 function renderGames(){
  if(gView==='next')return renderNext();
+ if(gSport!=='All')return renderByDate();
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
  const sports=['All','NBA','NFL','EuroLeague','Soccer'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
  const f=L.filter(g=>(gSport==='All'||(gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport))&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
- const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
+ const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;renderByDate.scrolled=0;
  $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">7</div><div class="s">NBA · NFL · EuroLeague · UCL · EPL · La Liga · MLS</div></div></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
  ${f.length?['NBA','NFL','EuroLeague','UCL','EPL','La Liga','MLS'].map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'}[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
@@ -889,6 +913,7 @@ async function fetchProps(X){if(!X||!X.id||!X.path||SOCCER.includes(MATCH&&MATCH
  for(const g of groups.values())out.push({...g,kind:'ou'});
  MATCH.propsAt=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
  return out;}
+function openKey(k){k=decodeURIComponent(k);const i=GAMES.list.findIndex(g=>g[0]+'|'+g[2]+'|'+g[3]===k);if(i>=0)openMatch(i);}
 async function openMatch(idx){
  const g=GAMES.list[idx];if(!g)return;const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
  MATCH={idx,g,lg,a,h,X};
@@ -938,6 +963,7 @@ async function buildCtx(g,sum){
  if(sum){const pc=(sum.pickcenter||[]).find(z=>z&&z.details);if(pc&&!soc){if(total==null&&pc.overUnder!=null)total=+pc.overUnder;if(spread==null){const m=String(pc.details).match(/^([A-Z]+)\s+([-+]?\d+(?:\.\d+)?)$/);if(m)spread=m[1]===X.ha?+m[2]:-m[2];}}}
  ctx.dk=sum?parseDK((sum.pickcenter||[]).find(z=>z&&(z.details||z.moneyline))||((sum.odds||[]).find(z=>z&&(z.details||z.moneyline)))):null;
  if(ctx.dk){if(!soc&&ctx.dk.spH!=null)spread=ctx.dk.spH;if(ctx.dk.tot!=null)total=ctx.dk.tot;}
+ if(X.el)total=null;
  ctx.spread=spread;ctx.total=total;
  if(soc){
   let lh=1.45,la=1.15;
