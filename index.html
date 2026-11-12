@@ -664,7 +664,7 @@ function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
  if(INTL.includes(lg)){const na=BIGNAT.test(a),nh=BIGNAT.test(h);if(na&&nh)return 'Top nations';if((na||nh)&&lg!=='Friendlies')return 'Top nation';return '';}
  return '';}
 function inSport(g,s){return s==='All'||(s==='Special'?!!specialWhy(g):s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
-const CATS=['All','FC','NBA','MLB','NFL','NHL','Tennis','Special'];
+const CATS=['All','FC','NBA','MLB','NFL','NHL','Tennis'];
 const FCSUB=[['EPL','Premier League'],['La Liga','La Liga'],['Serie A','Serie A'],['Bundesliga','Bundesliga'],['Ligue 1','Ligue 1'],['INTL','International'],['UCL','Champions League'],['MLS','MLS']];let gFC='EPL';
 const SNAP=GAMES.list.slice();
 let gSport='All',gStat='All',FEED_ON=false;
@@ -688,7 +688,7 @@ function gameCard(g,idx){
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',EuroLeague:'basketball'}[lg]||'soccer');
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
-  <div class="ghead"><span class="glg">${lg}${why?` <span style="color:var(--warn)" title="${why}">★</span>`:''}</span>${pill}</div>${why&&gSport==='Special'?`<div class="hint" style="margin:-6px 0 6px;color:var(--warn)">★ ${why}</div>`:''}
+  <div class="ghead"><span class="glg">${lg}</span>${pill}</div>${why&&gSport==='Special'?`<div class="hint" style="margin:-6px 0 6px;color:var(--warn)">★ ${why}</div>`:''}
   ${rows.map(r=>`<div class="trow ${win?(win===r[0]?'win':'lose'):''}"><span class="tname">${badgeHTML(r[0],r[3],r[4])}<b title="${r[0]}">${r[0]}</b>${soc&&r[2]?'<span class="glg" style="font-size:10px">Home</span>':''}</span><span class="score">${r[1]==null?'':r[1]}</span></div>`).join('')}
   <div class="ginfo">${info}</div>${line}${(()=>{if(st!=='live')return '';const ll=liveLine(lg,X,as,hs);return ll?`<div class="gline" style="color:var(--live);font-weight:600">Live O/U ${ll.L} · projected total ${ll.proj.toFixed(1)}${ll.pre!=null?` · pregame ${ll.pre}`:''}</div>`:'';})()}${prob}
   ${note?`<div class="gpick">${note}</div>`:''}
@@ -698,7 +698,7 @@ let gNext='All',gView='games';
 const CICON={All:'🏟️',FC:'⚽',NBA:'🏀',MLB:'⚾',NFL:'🏈',NHL:'🏒',Tennis:'🎾',Special:'⭐'};
 function topBar(){const cur=gView==='next'?gNext:gSport;
  return `<div class="catbar"><div class="cats">${CATS.map(s=>`<button class="cat${cur===s?' on':''}" onclick="${gView==='next'?`gNext='${s}'`:`gSport='${s}';gDate=null`};renderGames()"><span class="ci">${CICON[s]||''}</span><span>${s}</span></button>`).join('')}</div>
- <div class="vt"><button class="${gView==='games'?'on':''}" onclick="gView='games';renderGames()">Games</button><button class="${gView==='next'?'on':''}" onclick="gView='next';gNext=gSport;renderGames()">Next matches</button></div></div>`;}
+</div>`;}
 function viewToggle(){const b=(v,l)=>`<button class="btn ${gView===v?'':'ghost'}" style="padding:9px 18px" onclick="gView='${v}';renderGames()">${l}</button>`;return `<div style="display:flex;gap:8px;margin-bottom:14px">${b('games','Games')}${b('next','Next matches')}</div>`;}
 function renderNext(){
  const L=GAMES.list,dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;
@@ -1318,7 +1318,7 @@ function copyOut(s){
  try{navigator.clipboard.writeText(txt).then(()=>{const t=$('toast');t.style.display='block';setTimeout(()=>t.style.display='none',1400);}).catch(()=>{});}catch(e){}
 }
 function show(t){
- if(t==='next')gView='next';t='games';
+ gView='games';t='games';
  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));
  renderGames();
