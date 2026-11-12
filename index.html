@@ -943,7 +943,7 @@ async function pullFeed(){
  GAMES.list=buildList();FEED_ON=true;lastOk=Date.now();
  GAMES.asof='updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
  setFeed(true,'Live · every '+(rate()/1000)+'s');
- const sig=JSON.stringify(GAMES.list.map(g=>[g[0],g[1],g[4],g[5],g[6],g[7]]));if(sig!==pullFeed.sig){pullFeed.sig=sig;if($('p-games').classList.contains('on'))renderGames();}
+ const sig=JSON.stringify(GAMES.list.map(g=>[g[0],g[1],g[4],g[5],g[6],g[7]]));if(sig!==pullFeed.sig){pullFeed.sig=sig;try{window.RW&&RW.settle();}catch(e){}if($('p-games').classList.contains('on'))renderGames();}
 
  return true;
 }
@@ -2097,7 +2097,7 @@ function season(){const c=C.club,yr=2026+C.seasons.length;
  const wasLoan=!!C.loan;if(C.loanLeft){C.loanLeft--;if(!C.loanLeft){C.club=C.loan;C.loan=null;}}
  if(!wasLoan&&C.age>=22&&C.ovr<c.s-11&&Math.random()<.6){const nc=pick(ALLCLUBS.filter(x=>Math.abs(x.s-C.ovr)<5&&x.n!==c.n))||c;if(nc!==c){C.events.push(`${C.age}: released by ${c.n}`);C.club=nc;}}
  C.age++;if(C.age>=39||(C.age>=36&&C.ovr<68&&Math.random()<.5))C.retired=true;}
-function careerEnd(){const T=C.trophies,tt=Object.values(T).reduce((a,b)=>a+b,0),peak=Math.max(...C.seasons.map(s=>s.ovr)),clubs=[...new Set(C.seasons.map(s=>s.club.n))];
+function careerEnd(){if(window.RW&&!C.paid){C.paid=1;RW.earn(20,'Career completed',3);}const T=C.trophies,tt=Object.values(T).reduce((a,b)=>a+b,0),peak=Math.max(...C.seasons.map(s=>s.ovr)),clubs=[...new Set(C.seasons.map(s=>s.club.n))];
  const score=peak*1.4+T.League*4+T['Champions League']*9+T['World Cup']*14+T['Copa/Euro']*8+T["Ballon d'Or"]*16+T.Cup*1.5+(C.pos==='GK'?(C.cs||0)/12:(C.goals+C.assists)/14);
  const title=score>260?'All-time great 🐐':score>200?'Club legend 👑':score>160?'World-class star ⭐':score>130?'Solid pro 💼':clubs.length>=6?'Journeyman 🧳':'Cult hero 🙌';
  show(top('Career over')+careerHead()+`<div class="card" style="margin-top:12px;text-align:center"><div class="mglab">Legacy</div><div style="font:800 34px var(--display);text-transform:uppercase;margin:6px 0">${title}</div>
@@ -2143,12 +2143,136 @@ const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 function checkWin(){for(const l of LINES){const [a,b,c]=l.map(i=>T.board[i]&&T.board[i].m);if(a&&a===b&&b===c)return {m:a,line:l};}if(T.board.every(Boolean))return {m:null,line:[]};
  // draw if no remaining cell has an unused answer
  if(T.board.every((b,i)=>b||answers(T.rows[Math.floor(i/3)],T.cols[i%3]).every(p=>T.used.has(p.n))))return {m:null,line:[]};return null;}
-function nextTurn(){T.win=checkWin();if(!T.win){T.turn=T.turn==='X'?'O':'X';}tttDraw();if(!T.win&&T.mode==='cpu'&&T.turn==='O'){const myT=T;clearTimeout(T.cpuT);T.cpuT=setTimeout(()=>{if(T===myT&&T.turn==='O'&&!T.win&&box.style.display==='block'&&document.querySelector('.ttt'))cpuMove();},900);}}
+function nextTurn(){T.win=checkWin();if(T.win&&T.win.m==='X'&&T.mode==='cpu'&&window.RW)RW.earn(25,'Tic Tac Toe win',3);if(!T.win){T.turn=T.turn==='X'?'O':'X';}tttDraw();if(!T.win&&T.mode==='cpu'&&T.turn==='O'){const myT=T;clearTimeout(T.cpuT);T.cpuT=setTimeout(()=>{if(T===myT&&T.turn==='O'&&!T.win&&box.style.display==='block'&&document.querySelector('.ttt'))cpuMove();},900);}}
 function cpuMove(){if(!T||T.win)return;const free=T.board.map((b,i)=>b?null:i).filter(i=>i!=null);
  const score=i=>{let s=0;for(const l of LINES)if(l.includes(i)){const ms=l.map(j=>T.board[j]&&T.board[j].m);if(ms.filter(m=>m==='O').length===2&&!ms.includes('X'))s+=100;if(ms.filter(m=>m==='X').length===2&&!ms.includes('O'))s+=50;s+=ms.filter(m=>m==='O').length*3;}return s+(i===4?4:0)+Math.random()*2;};
  const i=free.sort((a,b)=>score(b)-score(a))[0];const opts=answers(T.rows[Math.floor(i/3)],T.cols[i%3]).filter(p=>!T.used.has(p.n));
  if(!opts.length||Math.random()<.18){T.msg='🤖 The computer couldn’t think of anyone and passed.';T.msgc='';return nextTurn();}
  const p=pick(opts);T.board[i]={m:'O',p:p.n};T.used.add(p.n);T.msg=`🤖 Computer played ${p.n}.`;T.msgc='';nextTurn();}
+})();
+
+</script>
+<script>
+/* ================= REWARDS: Edge Coins, daily picks, card packs, collection ================= */
+(function(){
+const $r=id=>document.getElementById(id);
+const todayK=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
+const DEF={coins:150,picks:{},cards:{},streak:0,best:0,login:'',earnLog:[],daily:{}};
+let S;try{S=Object.assign({},DEF,JSON.parse(localStorage.getItem('el_rw')||'{}'));}catch(e){S=Object.assign({},DEF);}
+const save=()=>{try{localStorage.setItem('el_rw',JSON.stringify(S));}catch(e){}updChip();};
+const RW={};window.RW=RW;
+function updChip(){const c=$r('coinbtn');if(c)c.textContent='🪙 '+S.coins.toLocaleString();}
+RW.earn=function(n,why,cap){if(cap){const k=todayK()+'|'+why;S.daily[k]=(S.daily[k]||0)+1;if(S.daily[k]>cap)return false;}
+ S.coins+=n;S.earnLog.unshift({n,why,t:Date.now()});S.earnLog=S.earnLog.slice(0,40);save();toast(`+${n} 🪙 ${why}`);return true;};
+function toast(t){let el=$r('rwtoast');if(!el){el=document.createElement('div');el.id='rwtoast';document.body.appendChild(el);}el.textContent=t;el.className='on';clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2600);}
+
+/* ---------- styles ---------- */
+const css=`#rwtoast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--accent-ink);font:800 14px var(--body);padding:10px 16px;border-radius:99px;opacity:0;transition:.25s;z-index:60;pointer-events:none}#rwtoast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.rwbal{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;border-radius:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,var(--surface)),var(--surface));border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));margin-bottom:12px}
+.rwbal b{font:800 38px/1 var(--display)}.rwbal small{display:block;color:var(--mut);font-size:12px}
+.rwtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;scrollbar-width:none}.rwtabs button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:8px 14px;font:600 13px var(--body);cursor:pointer}.rwtabs button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pkrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.pkrow:first-child{border-top:0}
+.pkteams{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.pkbtn{flex:1;min-width:90px;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:10px;padding:8px 6px;cursor:pointer;font:600 12px var(--body)}
+.pkbtn img{width:26px;height:26px;object-fit:contain}.pkbtn i{font-style:normal;color:var(--accent);font:700 12px var(--body)}.pkbtn.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--surface2))}.pkbtn:disabled{opacity:.55;cursor:default}
+.pkres{font:700 12px var(--body);padding:2px 8px;border-radius:99px}.pkres.w{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}.pkres.l{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}.pkres.p{background:var(--surface2);color:var(--mut)}
+.packs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.pack{border-radius:16px;padding:18px;text-align:center;border:1px solid var(--line);background:linear-gradient(160deg,#1a2a22,#101317);position:relative;overflow:hidden}
+.pack.prem{background:linear-gradient(160deg,#3a2a0a,#140f05);border-color:#7a5a18}.pack .pi{font-size:46px}.pack h3{margin:6px 0 2px;font:800 22px var(--display);text-transform:uppercase}
+.odds{font-size:11px;color:var(--mut);margin:8px 0 12px;line-height:1.6}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.pcard{position:relative;border-radius:14px;padding:8px 8px 10px;text-align:center;border:2px solid var(--rc);background:linear-gradient(170deg,color-mix(in srgb,var(--rc) 30%,#0c0f13),#0c0f13 70%);color:#fff;overflow:hidden}
+.pcard .ov{position:absolute;left:8px;top:6px;font:800 26px/1 var(--display);text-align:left}.pcard .ov small{display:block;font:700 9px var(--body);letter-spacing:.06em;opacity:.8}
+.pcard .lg{position:absolute;right:8px;top:8px;font:700 9px var(--body);background:rgba(0,0,0,.45);padding:2px 6px;border-radius:99px}
+.pcard .hs{width:100%;aspect-ratio:1;object-fit:cover;object-position:top;margin-top:14px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+.pcard b{display:block;font:800 15px/1.1 var(--display);text-transform:uppercase;margin-top:2px}.pcard .tm{font-size:10px;opacity:.75}.pcard .stt{font:700 11px var(--body);margin-top:4px;color:var(--rc)}
+.pcard .rr{font:800 9px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--rc);margin-top:3px}.pcard .dup{position:absolute;right:6px;bottom:6px;background:var(--rc);color:#000;font:800 10px var(--body);border-radius:99px;padding:1px 6px}
+.r-C{--rc:#9aa3b2}.r-R{--rc:#3fa9ff}.r-E{--rc:#b26bff}.r-L{--rc:#ffc93c}
+.pcard.r-L{box-shadow:0 0 22px rgba(255,201,60,.45)}.pcard.r-E{box-shadow:0 0 16px rgba(178,107,255,.35)}
+.reveal{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0}.reveal .slot{width:150px;perspective:900px}
+.flip{position:relative;transition:transform .6s;transform-style:preserve-3d;cursor:pointer}.flip.done{transform:rotateY(180deg)}
+.flip .back,.flip .front{backface-visibility:hidden}.flip .front{transform:rotateY(180deg)}.flip .back{position:absolute;inset:0;border-radius:14px;background:repeating-linear-gradient(45deg,#16251d,#16251d 10px,#1b2f24 10px,#1b2f24 20px);border:2px solid var(--accent);display:grid;place-items:center;font-size:34px}`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+/* ---------- card pool from ESPN leaders ---------- */
+const LEAGUES=[['NBA','basketball/nba'],['NFL','football/nfl'],['NHL','hockey/nhl'],['MLB','baseball/mlb']];
+let POOL=null;
+async function loadPool(){if(POOL)return POOL;
+ try{const c=JSON.parse(localStorage.getItem('el_pool')||'null');if(c&&Date.now()-c.t<12*36e5&&c.p.length>40){POOL=c.p;return POOL;}}catch(e){}
+ const all=[];await Promise.all(LEAGUES.map(async([lg,p])=>{try{const d=await fetch(`https://site.api.espn.com/apis/site/v3/sports/${p}/leaders`).then(r=>r.json());const cats=(d.leaders&&d.leaders.categories)||[];const M=new Map();
+  cats.forEach(cat=>(cat.leaders||[]).forEach((x,ri)=>{const a=x.athlete;if(!a||!a.id)return;let m=M.get(a.id);if(!m){m={id:lg+a.id,lg,n:a.displayName,sn:a.shortName||a.displayName,hs:(a.headshot&&a.headshot.href)||'',tm:(a.team&&a.team.abbreviation)||(x.team&&x.team.abbreviation)||'',pos:(a.position&&a.position.abbreviation)||'',sc:0,best:null};M.set(a.id,m);}
+   m.sc+=(10-ri);if(!m.best||ri<m.best.r)m.best={r:ri,v:x.displayValue,c:cat.shortDisplayName||cat.displayName};}));
+  const arr=[...M.values()].sort((p,q)=>q.sc-p.sc),mx=arr[0]?arr[0].sc:1;arr.forEach((m,i)=>{const pc=i/arr.length;m.ovr=Math.min(99,Math.round(70+29*Math.pow(m.sc/mx,.55)));m.r=pc<.05?'L':pc<.18?'E':pc<.45?'R':'C';m.st=m.best?`${m.best.v} ${m.best.c}`:'';delete m.best;delete m.sc;});all.push(...arr);}catch(e){}}));
+ if(all.length){POOL=all;try{localStorage.setItem('el_pool',JSON.stringify({t:Date.now(),p:all}));}catch(e){}}return POOL||[];}
+const RNAME={C:'Common',R:'Rare',E:'Epic',L:'Legendary'},SELL={C:10,R:25,E:60,L:150};
+const PACKS={basic:{n:'Basic Pack',cost:100,k:3,odds:{C:70,R:22,E:7,L:1},ic:'🎴'},prem:{n:'Elite Pack',cost:300,k:5,odds:{C:40,R:38,E:17,L:5},ic:'👑'}};
+function cardHTML(c,dup){if(!c)return '';return `<div class="pcard r-${c.r}"><div class="ov">${c.ovr}<small>${c.pos||''}</small></div><span class="lg">${c.lg}</span><img class="hs" src="${c.hs}" alt="" onerror="this.style.opacity=.15"><b>${c.sn}</b><div class="tm">${c.tm}</div><div class="stt">${c.st}</div><div class="rr">${RNAME[c.r]}</div>${dup>1?`<span class="dup">×${dup}</span>`:''}</div>`;}
+
+/* ---------- picks ---------- */
+const pk=g=>gameKey(g);
+function probs(g){const pr=g[7],soc=SOCCER.includes(g[0]);if(pr&&pr.length>=2){const a=+pr[0]||0,h=+pr[1]||0,d=+(pr[2]||0),t=a+h+d||100;return soc?{a:a/t,h:h/t,d:d/t}:{a:a/(a+h||1),h:h/(a+h||1)};}return soc?{a:.36,h:.36,d:.28}:{a:.5,h:.5};}
+const reward=p=>Math.max(10,Math.min(80,Math.round(8/Math.max(p,.08))));
+RW.pick=function(k,side){const g=GAMES.list.find(x=>pk(x)===k);if(!g||g[1]!=='up')return toast('This game already started');
+ const today=Object.values(S.picks).filter(p=>p.day===todayK()).length;if(!S.picks[k]&&today>=10)return toast('Max 10 picks per day');
+ const P=probs(g);S.picks[k]={side,rw:reward(P[side]),day:todayK(),t:Date.now(),lg:g[0],a:g[2],h:g[3],date:g[10]&&g[10].date,res:null};save();RW.view('picks');};
+const PKS=[];RW.pickI=(i,side)=>RW.pick(PKS[i],side);
+RW.settle=function(){let ch=false;for(const [k,p] of Object.entries(S.picks)){if(p.res)continue;const g=GAMES.list.find(x=>pk(x)===k);if(!g||g[1]!=='final')continue;
+  const as=g[4],hs=g[5];let w=null;if(g[0]==='UFC'){w=hs==='W'?'h':as==='W'?'a':'d';}else{w=+as>+hs?'a':+hs>+as?'h':'d';}
+  p.res=w===p.side?'w':'l';p.score=`${as}-${hs}`;ch=true;
+  if(p.res==='w'){S.streak++;S.best=Math.max(S.best,S.streak);RW.earn(p.rw,`${p.side==='d'?'Draw':p.side==='a'?p.a:p.h} won`);const b={3:25,5:60,10:200}[S.streak];if(b)RW.earn(b,`${S.streak}-pick streak!`);}else S.streak=0;}
+ const cut=Date.now()-14*864e5;for(const [k,p] of Object.entries(S.picks))if(p.res&&p.t<cut)delete S.picks[k];if(ch)save();};
+
+/* ---------- views ---------- */
+let VIEW='home';
+RW.view=function(v){VIEW=v;render();};
+function render(){const box=$r('mgbox');if(!box||box.style.display!=='block')return;const w=box.querySelector('.mgw');if(!w)return;
+ const tabs=[['home','🏠 Home'],['picks','🎯 Daily picks'],['packs','🎴 Packs'],['coll','📚 Collection'],['games','🎮 Minigames']];
+ let h=`<div class="mgtop"><h2>🎮 Play</h2></div><div class="rwbal"><div><small>Edge Coins</small><b>🪙 ${S.coins.toLocaleString()}</b></div><div style="text-align:right"><small>Pick streak</small><b style="font-size:26px">🔥 ${S.streak}</b><small>Best ${S.best}</small></div></div><div class="rwtabs">${tabs.map(([k,l])=>`<button class="${VIEW===k?'on':''}" onclick="RW.view('${k}')">${l}</button>`).join('')}</div>`;
+ if(VIEW==='home')h+=homeV();else if(VIEW==='picks')h+=picksV();else if(VIEW==='packs')h+=packsV();else if(VIEW==='coll')h+=collV();else h+=gamesV();
+ w.innerHTML=h;}
+function homeV(){const claimed=S.login===todayK(),nOwned=Object.keys(S.cards).length,pend=Object.values(S.picks).filter(p=>!p.res).length;
+ return `<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><span style="font-size:34px">🎁</span><div style="flex:1"><b>Daily bonus</b><div class="hint" style="margin:0">${claimed?'Come back tomorrow for more coins.':'Claim 25 free coins today.'}</div></div><button class="mgbtn" ${claimed?'disabled style="opacity:.5"':''} onclick="RW.claim()">${claimed?'Claimed ✓':'Claim +25'}</button></div>
+ <div class="mghub">
+ <button class="mgcard" onclick="RW.view('picks')"><span class="ic">🎯</span><span><b>Daily picks</b><span>Pick winners for free. The bigger the upset, the more coins you win. ${pend?`<b style="display:inline;font:700 13px var(--body);color:var(--accent)">${pend} pending</b>`:''}</span></span></button>
+ <button class="mgcard" onclick="RW.view('packs')"><span class="ic">🎴</span><span><b>Card packs</b><span>Spend coins to open packs of real NBA, NFL, NHL and MLB player cards.</span></span></button>
+ <button class="mgcard" onclick="RW.view('coll')"><span class="ic">📚</span><span><b>Collection</b><span>${nOwned} card${nOwned===1?'':'s'} collected. Ratings update with real stats.</span></span></button>
+ <button class="mgcard" onclick="RW.view('games')"><span class="ic">🎮</span><span><b>Minigames</b><span>Career Simulator and Footy Tic Tac Toe. Win coins too.</span></span></button></div>
+ <div class="card" style="margin-top:12px"><div class="mglab">How to earn coins</div><div class="hint" style="margin:6px 0 0;line-height:1.8">🎁 Daily bonus: +25 · 🎯 Correct pick: +10 to +80 · 🔥 Streaks of 3 / 5 / 10: +25 / +60 / +200 · ❌⭕ Beat the computer at Tic Tac Toe: +25 (3 a day) · ⚽ Finish a career: +20 (3 a day)</div><div class="hint" style="margin:8px 0 0">Coins are free and just for fun. They can’t be bought or cashed out.</div></div>`;}
+RW.claim=function(){if(S.login===todayK())return;S.login=todayK();RW.earn(25,'Daily bonus');render();};
+function picksV(){RW.settle();const now=Date.now(),hi=now+36*36e5;
+ const up=GAMES.list.filter(g=>g[1]==='up'&&g[10]&&g[10].date&&Date.parse(g[10].date)<hi&&g[0]!=='Tennis').sort((p,q)=>Date.parse(p[10].date)-Date.parse(q[10].date));
+ const used=Object.values(S.picks).filter(p=>p.day===todayK()).length;
+ const btn=(g,side,name,logo,P)=>{const k=pk(g),me=S.picks[k],on=me&&me.side===side;let i=PKS.indexOf(k);if(i<0){PKS.push(k);i=PKS.length-1;}return `<button class="pkbtn${on?' on':''}" onclick="RW.pickI(${i},'${side}')">${logo?`<img src="${logo}" alt="" onerror="this.remove()">`:''}<span>${name}</span><i>+${on?me.rw:reward(P[side])} 🪙</i></button>`;};
+ const rows=up.map(g=>{const [lg,stt,a,h]=g,X=g[10]||{},P=probs(g),soc=SOCCER.includes(lg),d=new Date(X.date);
+  return `<div class="pkrow"><div style="grid-column:1/-1"><div class="hint" style="margin:0">${CICON[soc?'FC':lg]||''} ${LGNAME[lg]||lg} · ${d.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})}</div><div class="pkteams">${btn(g,'a',X.aa||abbrOf(a),X.la,P)}${soc?btn(g,'d','Draw','',P):''}${btn(g,'h',X.ha||abbrOf(h),X.lh,P)}</div></div></div>`;}).join('');
+ const hist=Object.entries(S.picks).sort((p,q)=>q[1].t-p[1].t).slice(0,25).map(([k,p])=>`<div class="frow"><span><b>${p.side==='d'?'Draw':p.side==='a'?p.a:p.h}</b> <span class="hint" style="margin:0">${p.a} @ ${p.h}${p.score?' · '+p.score:''}</span></span><span class="pkres ${p.res||'p'}">${p.res==='w'?'+'+p.rw+' 🪙':p.res==='l'?'Lost':'Pending'}</span></div>`).join('');
+ return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2 class="ptitle" style="margin:0">Daily picks</h2><span class="hint" style="margin:0">${used}/10 today</span></div><div class="hint" style="margin:4px 0 6px">Tap who you think wins. Picks lock when the game starts and pay out automatically when it ends.</div>${rows||'<div class="hint">No games in the next 36 hours yet.</div>'}</div>
+ ${hist?`<div class="card" style="margin-top:12px"><div class="mglab">Your picks</div>${hist}</div>`:''}`;}
+function packsV(){return `<div class="packs">${Object.entries(PACKS).map(([k,p])=>`<div class="pack${k==='prem'?' prem':''}"><div class="pi">${p.ic}</div><h3>${p.n}</h3><div class="hint" style="margin:0">${p.k} player cards</div><div class="odds">Odds per card · Common ${p.odds.C}% · Rare ${p.odds.R}% · Epic ${p.odds.E}% · Legendary ${p.odds.L}%</div><button class="mgbtn" style="width:100%" onclick="RW.open('${k}')" ${S.coins<p.cost?'disabled style="width:100%;opacity:.5"':''}>Open · 🪙 ${p.cost}</button></div>`).join('')}</div>
+ <div class="hint" style="margin-top:10px">Cards are the current stat leaders in the NBA, NFL, NHL and MLB. Their rating moves as the real stats change.</div><div id="reveal"></div>`;}
+RW.open=async function(k){const p=PACKS[k];if(S.coins<p.cost)return toast('Not enough coins');const pool=await loadPool();if(!pool.length)return toast('Cards are loading, try again in a moment');
+ S.coins-=p.cost;const got=[];for(let i=0;i<p.k;i++){let u=Math.random()*100,r='C';for(const [rr,o] of [['L',p.odds.L],['E',p.odds.E],['R',p.odds.R],['C',p.odds.C]]){if(u<o){r=rr;break;}u-=o;}
+  let b=pool.filter(c=>c.r===r);if(!b.length)b=pool;const c=b[Math.floor(Math.random()*b.length)];got.push(c);S.cards[c.id]=(S.cards[c.id]||0)+1;}
+ save();render();const el=$r('reveal');if(!el)return;
+ el.innerHTML=`<div class="card" style="margin-top:12px;text-align:center"><div class="mglab">Your ${p.n} · tap to reveal</div><div class="reveal">${got.map((c,i)=>`<div class="slot"><div class="flip" id="fl${i}" onclick="this.classList.add('done')"><div class="back">${p.ic}</div><div class="front">${cardHTML(c,0)}</div></div></div>`).join('')}</div><button class="mgbtn alt" onclick="document.querySelectorAll('.flip').forEach((f,i)=>setTimeout(()=>f.classList.add('done'),i*250))">Reveal all</button></div>`;
+ el.scrollIntoView({behavior:'smooth',block:'start'});};
+let CF='All';
+function collV(){const pool=POOL||[];if(!POOL){loadPool().then(()=>{if(VIEW==='coll')render();});}
+ const owned=Object.entries(S.cards).map(([id,n])=>({c:pool.find(x=>x.id===id),n})).filter(x=>x.c&&(CF==='All'||x.c.lg===CF)).sort((p,q)=>q.c.ovr-p.c.ovr);
+ const dupVal=Object.entries(S.cards).reduce((s,[id,n])=>{const c=pool.find(x=>x.id===id);return s+(c&&n>1?(n-1)*SELL[c.r]:0);},0);
+ const tot=Object.keys(S.cards).length;
+ return `<div class="rwtabs">${['All','NBA','NFL','NHL','MLB'].map(f=>`<button class="${CF===f?'on':''}" onclick="RW.cf('${f}')">${f}</button>`).join('')}</div>
+ <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><span><b>${tot}</b> unique cards <span class="hint" style="margin:0">of ${pool.length||'…'}</span></span>${dupVal?`<button class="mgbtn alt" onclick="RW.sell()">Sell duplicates · +${dupVal} 🪙</button>`:''}</div>
+ ${owned.length?`<div class="cgrid">${owned.map(x=>cardHTML(x.c,x.n)).join('')}</div>`:`<div class="card" style="text-align:center;padding:30px"><div style="font-size:30px">🎴</div><b>No cards yet</b><div class="hint">Open a pack to start your collection.</div><button class="mgbtn" style="margin-top:8px" onclick="RW.view('packs')">Go to packs</button></div>`}`;}
+RW.cf=f=>{CF=f;render();};
+RW.sell=function(){const pool=POOL||[];let t=0;for(const [id,n] of Object.entries(S.cards)){const c=pool.find(x=>x.id===id);if(c&&n>1){t+=(n-1)*SELL[c.r];S.cards[id]=1;}}if(t)RW.earn(t,'Sold duplicates');render();};
+function gamesV(){return `<div class="mghub"><button class="mgcard" onclick="MG.career()"><span class="ic">⚽</span><span><b>Career Simulator</b><span>Build a legendary career, season by season. +20 🪙 when you finish.</span></span></button>
+ <button class="mgcard" onclick="MG.ttt()"><span class="ic">❌⭕</span><span><b>Footy Tic Tac Toe</b><span>Name players who fit club and country. +25 🪙 for beating the computer.</span></span></button></div>`;}
+
+/* ---------- hook into Play tab ---------- */
+MG.hub=function(){const box=$r('mgbox');box.innerHTML='<div class="mgw"></div>';VIEW=VIEW||'home';render();box.scrollTop=0;};
+window.openGames=function(){const box=$r('mgbox');box.style.display='block';document.body.style.overflow='hidden';try{NAVON='play';renderNav();}catch(e){}MG.hub();loadPool();};
+const hi=document.querySelector('.hicons');if(hi&&!$r('coinbtn')){const b=document.createElement('button');b.className='hicon pro';b.id='coinbtn';b.style.color='var(--warn)';b.style.borderColor='color-mix(in srgb,var(--warn) 45%,transparent)';b.onclick=()=>{try{closeAll();}catch(e){}VIEW='home';openGames();};hi.insertBefore(b,hi.firstChild);}
+updChip();setInterval(()=>{try{RW.settle();}catch(e){}},30000);
 })();
 
 </script>
