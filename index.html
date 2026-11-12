@@ -142,6 +142,17 @@ table.mt td{vertical-align:middle}
 .pbarcell span{display:block;height:100%;background:var(--accent)}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.ptitle{margin:0;font:700 20px var(--body);letter-spacing:0}
+.pred .prow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+.pred .prow b{font-weight:600;text-align:right}
+.wprow{background:var(--surface2);border-radius:12px;padding:12px;margin-top:14px;text-align:center}
+.wpcells{display:flex;align-items:center;justify-content:space-around;gap:8px;margin-top:10px}
+.wpcells b{font:700 24px var(--display)}
+.wpsep{width:1px;height:28px;background:var(--line2)}
+.rgrid{border-collapse:separate;border-spacing:5px;width:100%}
+.rgrid th{color:var(--mut);font:600 12px var(--mono);text-align:center;background:none;border:0;padding:2px;text-transform:none;letter-spacing:0}
+.rgrid td{padding:0;border:0}
+.rc{border-radius:7px;padding:9px 2px;text-align:center;font:600 12px var(--mono);color:var(--ink);min-width:48px}
 .mitem{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
 .mitem b{font:700 20px var(--display);color:var(--good);grid-row:span 2;align-self:center}
 </style>
@@ -899,7 +910,7 @@ function matchHeader(g){
  const L=soc?[[h,hs,X.ha,X.ch],[a,as,X.aa,X.ca]]:[[a,as,X.aa,X.ca],[h,hs,X.ha,X.ch]];
  const pill=st==='live'?'<span class="pill livep">LIVE</span>':st==='final'?'<span class="pill pass">FINAL</span>':'<span class="pill lean">UPCOMING</span>';
  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="glg">${lg}</span><div style="display:flex;gap:8px;align-items:center">${pill}<button class="btn ghost" style="padding:6px 12px" onclick="closeMatch()" aria-label="Close">✕</button></div></div>
- <div class="mteams">${L.map((r,i)=>`<div class="mteam">${badgeHTML(r[0],r[2],r[3]).replace('class="badge"','class="badge big"')}<b>${r[0]}</b>${soc&&i===0?'<span class="glg">Home</span>':''}</div>${i===0?`<div class="mscore">${as==null?'vs':`${L[0][1]} – ${L[1][1]}`}</div>`:''}`).join('')}</div>
+ <div class="mteams">${L.map((r,i)=>`<div class="mteam">${badgeHTML(r[0],r[2],r[3]).replace('class="badge"','class="badge big"')}<b>${r[0]}</b>${soc&&i===0?'<span class="glg">Home</span>':''}</div>${i===0?`<div class="mscore">${as==null?(()=>{const d=X.date?new Date(X.date):null;if(!d)return 'vs';const t0=new Date();t0.setHours(0,0,0,0);const dd=Math.round((new Date(d).setHours(0,0,0,0)-t0)/864e5);return `<span style="font-size:32px">${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span><div class="hint" style="margin:4px 0 0;font-family:var(--body);font-size:14px">${dd===0?'Today':dd===1?'Tomorrow':d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'})}</div>`;})():`${L[0][1]} – ${L[1][1]}`}</div>`:''}`).join('')}</div>
  <div class="ginfo" style="text-align:center">${info}${X.det?` · Line ${X.det}`:X.spread!=null?` · Line ${X.ha||''} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`;
 }
 function leadersHTML(sum){
@@ -1018,10 +1029,38 @@ function renderMatch(ctx,R){
  const P=x=>x/n,share=(fn)=>{let c=0;for(let i=0;i<n;i++)if(fn(H[i],A[i]))c++;return c/n;};
  const most=[];
  // result
- let html=`<div class="kpis"><div class="kpi"><div class="l">Projected score</div><div class="v">${soc?`${eH.toFixed(1)} – ${eA.toFixed(1)}`:`${eA.toFixed(0)} – ${eH.toFixed(0)}`}</div><div class="s">${soc?`${h} – ${a}`:`${a} @ ${h}`}</div></div>
- <div class="kpi"><div class="l">${h} win</div><div class="v">${(P(hw)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(hw))}</div></div>
- ${soc?`<div class="kpi"><div class="l">Draw</div><div class="v">${(P(dr)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(dr))}</div></div>`:`<div class="kpi"><div class="l">Fair spread (${h})</div><div class="v">${-fm>0?'+':''}${(-fm).toFixed(1)}</div><div class="s">${ctx.spread!=null?'book '+(ctx.spread>0?'+':'')+ctx.spread:'no book line'}</div></div>`}
- <div class="kpi"><div class="l">${a} win</div><div class="v">${(P(aw)*100).toFixed(1)}%</div><div class="s">fair ${amer(P(aw))}</div></div></div>${liveL!=null?`<div class="top" style="border-left-color:var(--live);background:color-mix(in srgb,var(--live) 8%,var(--surface))"><b style="color:var(--live)">Live O/U line: ${liveL}</b> ${soc?'goals':'points'} · Over ${(liveO*100).toFixed(0)}% / Under ${((1-liveO)*100).toFixed(0)}% · fair spread ${h} ${-fm>0?'+':''}${(Math.round(-fm*2)/2).toFixed(1)} · updates every 15 seconds from the current score${ctx.total!=null?` (pregame DraftKings total was ${ctx.total})`:''}</div>`:''}`;
+ const X0=(MATCH&&MATCH.g&&MATCH.g[10])||{},bH=badgeHTML(h,X0.ha,X0.ch),bA=badgeHTML(a,X0.aa,X0.ca),pct0=x=>(x*100).toFixed(0)+'%';
+ const meanOf=hh=>{let t=0,m=0;for(let i=0;i<hh.length;i++){t+=hh[i];m+=i*hh[i];}return m/(t||1);};
+ const pred=[];
+ const win=(soc?[[P(hw),h],[P(dr),'Draw'],[P(aw),a]]:[[P(hw),h],[P(aw),a]]).sort((p,q)=>q[0]-p[0])[0];
+ pred.push(['Full-time winner',`${win[1]} <span class="hint" style="margin:0">${pct0(win[0])}</span>`]);
+ if(soc){
+  const btts=share((x,y)=>x>0&&y>0);pred.push(['Both teams to score',btts>=.5?`Yes <span class="hint" style="margin:0">${pct0(btts)}</span>`:`No <span class="hint" style="margin:0">${pct0(1-btts)}</span>`]);
+  const tg=new Map();for(let i=0;i<n;i++){const t=H[i]+A[i];tg.set(t,(tg.get(t)||0)+1);}pred.push(['Total goals',String([...tg.entries()].sort((p,q)=>q[1]-p[1])[0][0])]);
+  const L=liveL!=null?liveL:ctx.dk&&ctx.dk.tot!=null?ctx.dk.tot:2.5,o=share((x,y)=>x+y>L);pred.push([`Over/Under ${L} goals`,o>=.5?`Over <span class="hint" style="margin:0">${pct0(o)}</span>`:`Under <span class="hint" style="margin:0">${pct0(1-o)}</span>`]);
+  const top=[...sc.entries()].sort((p,q)=>q[1]-p[1])[0];if(top)pred.push(['Most likely score',`${top[0].replace('-',' – ')} <span class="hint" style="margin:0">${pct0(top[1]/n)}</span>`]);
+  for(const o of R.P){const g1=histGE(o.h.goals,1);if(g1>.25){pred.push(['Likely scorer',`${o.p.name} <span class="hint" style="margin:0">${pct0(g1)}</span>`]);break;}}
+ }else{
+  pred.push(['Projected score',`${h} ${eH.toFixed(0)} – ${eA.toFixed(0)} ${a}`]);
+  pred.push(['Total points',ft.toFixed(0)]);
+  const sp=ctx.st==='live'?null:ctx.spread;if(sp!=null){let c=0,pu=0;for(let i=0;i<n;i++){const v=H[i]-A[i]+sp;if(v>0)c++;else if(v===0)pu++;}const pc=c/(n-pu||1);pred.push([`Spread (${h} ${sp>0?'+':''}${sp})`,pc>=.5?`${h} covers <span class="hint" style="margin:0">${pct0(pc)}</span>`:`${a} covers <span class="hint" style="margin:0">${pct0(1-pc)}</span>`]);}
+  const TL=liveL!=null?liveL:ctx.total;if(TL!=null){let o=0,pu=0;for(let i=0;i<n;i++){const v=H[i]+A[i];if(v>TL)o++;else if(v===TL)pu++;}const po=o/(n-pu||1);pred.push([`Over/Under ${TL}${liveL!=null?' (live)':''}`,po>=.5?`Over <span class="hint" style="margin:0">${pct0(po)}</span>`:`Under <span class="hint" style="margin:0">${pct0(1-po)}</span>`]);}
+  const k0=ctx.lg==='NFL'?'passYds':'pts';let best=null;for(const o of R.P){const hh=o.h[k0];if(!hh)continue;const m=meanOf(hh);if(!best||m>best[1])best=[o.p.name,m];}
+  if(best)pred.push([ctx.lg==='NFL'?'Top passer':'Top scorer',`${best[0]} <span class="hint" style="margin:0">${best[1].toFixed(ctx.lg==='NFL'?0:1)} ${ctx.lg==='NFL'?'yds':'pts'}</span>`]);
+ }
+ const wp=`<div class="wprow"><div class="hint" style="margin:0">Win probability at the end of the match</div><div class="wpcells">${bH}<b>${pct0(P(hw))}</b>${soc?`<span class="wpsep"></span><b>${pct0(P(dr))}</b>`:''}<span class="wpsep"></span><b>${pct0(P(aw))}</b>${bA}</div></div>`;
+ let html=`<div class="card msec pred"><h2 class="ptitle">Match prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?'Updated live from the current score':'Generated before the match'} · ${NSIM.toLocaleString()} simulations</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}${wp}</div>`;
+ // result probability grid
+ let grid='';
+ if(soc){const M=[...Array(6)].map(()=>new Array(6).fill(0));for(let i=0;i<n;i++){const x=Math.min(5,H[i]),y=Math.min(5,A[i]);M[x][y]++;}let mx=0;for(const r of M)for(const c of r)mx=Math.max(mx,c);
+  grid=`<table class="rgrid"><tbody>${[5,4,3,2,1,0].map(x=>`<tr><th>${x}${x===5?'+':''}</th>${[0,1,2,3,4,5].map(y=>{const p=M[x][y]/n;return `<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(M[x][y]/mx*85)}%,var(--surface2))">${p<.001?'&lt;0.1%':(p*100).toFixed(1)+'%'}</div></td>`;}).join('')}</tr>`).join('')}<tr><th></th>${[0,1,2,3,4,5].map(y=>`<th>${y}${y===5?'+':''}</th>`).join('')}</tr></tbody></table><div class="hint" style="text-align:center">Rows: ${h} goals · Columns: ${a} goals</div>`;}
+ else{const bands=ctx.lg==='NFL'?[[-99,-15],[-14,-8],[-7,-1],[1,7],[8,14],[15,99]]:[[-99,-11],[-10,-6],[-5,-1],[1,5],[6,10],[11,99]];const w=ctx.lg==='NFL'?7:ctx.lg==='EuroLeague'?8:10;
+  const c0=Math.round(ft/w)*w,rows=[2,1,0,-1,-2].map(k=>[c0+k*w-Math.floor(w/2),c0+k*w+Math.ceil(w/2)-1]);rows[0][1]=999;rows[4][0]=-999;
+  const M=rows.map(()=>new Array(bands.length).fill(0));for(let i=0;i<n;i++){const t=H[i]+A[i],m=H[i]-A[i];const ri=rows.findIndex(r=>t>=r[0]&&t<=r[1]),ci=bands.findIndex(b=>m>=b[0]&&m<=b[1]);if(ri>=0&&ci>=0)M[ri][ci]++;}let mx=0;for(const r of M)for(const c of r)mx=Math.max(mx,c);
+  const bl=b=>b[0]>0?`${abbrOf(h)} ${b[1]>90?b[0]+'+':b[0]+'–'+b[1]}`:`${abbrOf(a)} ${b[0]<-90?(-b[1])+'+':(-b[1])+'–'+(-b[0])}`;
+  grid=`<table class="rgrid"><tbody>${rows.map((r,ri)=>`<tr><th>${r[1]>900?r[0]+'+':r[0]<-900?'≤'+r[1]:r[0]+'–'+r[1]}</th>${M[ri].map(c=>{const p=c/n;return `<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(c/(mx||1)*85)}%,var(--surface2))">${p<.001?'&lt;0.1%':(p*100).toFixed(1)+'%'}</div></td>`;}).join('')}</tr>`).join('')}<tr><th></th>${bands.slice().map(b=>`<th style="font-size:10px">${bl(b)}</th>`).join('')}</tr></tbody></table><div class="hint" style="text-align:center">Rows: total points · Columns: winner and winning margin</div>`;}
+ html+=`<div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>`;
+ html+=(liveL!=null?`<div class="top" style="border-left-color:var(--live);background:color-mix(in srgb,var(--live) 8%,var(--surface))"><b style="color:var(--live)">Live O/U line: ${liveL}</b> ${soc?'goals':'points'} · Over ${(liveO*100).toFixed(0)}% / Under ${((1-liveO)*100).toFixed(0)}% · updates every 15 seconds from the current score${ctx.total!=null?` (pregame DraftKings total was ${ctx.total})`:''}</div>`:'');
  html+=`<div class="top none" style="margin-bottom:14px"><b style="color:var(--ink)">${NSIM.toLocaleString()} simulations</b>${ctx.st==='live'?' from the current score':' of the full match'}. ${ctx.notes.join(' ')}</div>`;
   let dkHTML='';const dk=ctx.dk,bl=+$('blend').value/100;
  if(dk){const rows=[];
