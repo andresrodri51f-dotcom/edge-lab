@@ -1047,6 +1047,19 @@ function renderMatch(ctx,R){
  const list=items.filter(x=>x.p>=.03&&x.p<=.985).sort((p,q)=>q.p-p.p);
  const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td>${x.proj}</td><td>${x.range}</td></tr>`;
  const propRows=list.slice(0,50).map(rowH),moreRows=list.slice(50).map(rowH);
+  let dkProps='';
+ if(MATCH&&MATCH.props&&MATCH.props.length&&ctx.st!=='live'){const rows=[];
+  for(const pr of MATCH.props){const o=R.P.find(z=>z.p.id&&String(z.p.id)===String(pr.id));if(!o)continue;const hh=o.h[pr.key];if(!hh)continue;const nm=o.p.name;
+   if(pr.kind==='ou'){const pO=histGE(hh,Math.floor(pr.L)+1),io=impl(pr.over),iu=pr.under!=null?impl(pr.under):null;let nO=null,nU=null;if(io&&iu){nO=io/(io+iu);nU=iu/(io+iu);}else if(io)nO=io/1.045;
+    rows.push(mkRow(SLAB[pr.key],`${nm} Over ${pr.L}`,pr.over||0,nO,pO,0,bl));if(pr.under!=null||pr.over==null)rows.push(mkRow(SLAB[pr.key],`${nm} Under ${pr.L}`,pr.under||0,nU,1-pO,0,bl));}
+   else{const pp=histGE(hh,pr.N),io=impl(pr.over);if(pp<=0.005&&pr.N>3)continue;rows.push(mkRow(SLAB[pr.key]+' milestone',`${nm} ${pr.key==='td'?(pr.N===1?'anytime TD':pr.N+'+ TDs'):pr.N+'+'}`,pr.over,io?io/1.045:null,pp,0,bl));}}
+  if(ctx.st==='live')for(const r of rows){r.ev=null;r.k=0;r.nv=null;r.p=r.c;r.odds=0;}
+  rows.sort((p,q)=>q.c-p.c);
+  const ou=rows.filter(r=>!/milestone/.test(r.market)),ms=rows.filter(r=>/milestone/.test(r.market));
+  if(rows.length)dkProps=`<div class="card msec"><h3>DraftKings player props${ctx.st==='live'?' (closing lines, live chances)':''} · updated ${MATCH.propsAt||''}</h3>
+   <div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings stops posting these at tip-off, so these are the final pregame lines. The chances are live, from the current score.':'Pulled from DraftKings and refreshed every minute until the game starts. Over/under pairs have the vig removed; milestones (one-sided) use about 4.5% vig.'}</div>
+   ${ctx.st==='live'?'':topHTML(rows)}${tableHTML(ou.slice(0,40))}${ms.length?`<details><summary class="hint" style="cursor:pointer;margin-bottom:8px">Milestones (${ms.length})</summary>${tableHTML(ms.slice(0,60))}</details>`:''}</div>`;
+ }
  const mostTop=most.filter(m=>m.p>=.55&&m.p<.97).sort((p,q)=>q.p-p.p).slice(0,12);
  const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
  const propsHTML=propRows.length?`<div class="card msec"><h3>Player props · ${NSIM.toLocaleString()} sims each</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':'Player props need the live feed. Open Edge Lab from the website link.'}</div></div>`;
