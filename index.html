@@ -199,6 +199,7 @@ table.mt td{vertical-align:middle}
 .lock .over h2{font:800 20px var(--display);margin:0 0 6px}.lock .over ul{list-style:none;padding:0;margin:6px 0 14px;color:var(--mut);font-size:13px;line-height:1.7}
 .paybtn{background:var(--grad);color:#fff;border:0;border-radius:14px;padding:13px 22px;font:700 15px var(--body);cursor:pointer;box-shadow:0 8px 24px rgba(244,63,107,.35)}
 .codebox{display:flex;gap:6px;margin-top:10px}.codebox input{background:var(--surface2);border:1px solid var(--line2);border-radius:10px;color:var(--ink);padding:8px 10px;font:600 13px var(--mono);width:150px}
+.propscroll{max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch}.propscroll thead th{position:sticky;top:0;background:var(--surface);z-index:1}
 .wprow{background:var(--surface2);border-radius:12px;padding:12px;margin-top:14px;text-align:center}
 .wpcells{display:flex;align-items:center;justify-content:space-around;gap:8px;margin-top:10px}
 .wpcells b{font:700 20px var(--display)}
@@ -720,7 +721,7 @@ function gameCard(g,idx){
  if(pr){const pa=pr[0],ph=pr[1],pd=pr[2]||0;
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
- const line=X.ten?`<div class="gline">${X.setLine?'Sets: '+X.setLine:(X.tour||'')}</div>`:X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
+ const line='';const _line0=X.ten?`<div class="gline">${X.setLine?'Sets: '+X.setLine:(X.tour||'')}</div>`:X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',UFC:'ufc',EuroLeague:'basketball'}[lg]||'soccer');
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
@@ -1009,7 +1010,7 @@ function matchHeader(g){
  const pill=st==='live'?'<span class="pill livep">LIVE</span>':st==='final'?'<span class="pill pass">FINAL</span>':'<span class="pill lean">UPCOMING</span>';
  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="glg">${lg}</span><div style="display:flex;gap:8px;align-items:center">${pill}<button class="btn ghost" style="padding:6px 12px" onclick="closeMatch()" aria-label="Close">✕</button></div></div>
  <div class="mteams">${L.map((r,i)=>`<div class="mteam">${badgeHTML(r[0],r[2],r[3],r[4]).replace(/class="badge( tl)?"/,'class="badge big$1"')}<b>${r[0]}</b>${soc&&i===0?'<span class="glg">Home</span>':''}</div>${i===0?`<div class="mscore">${as==null?(()=>{const d=X.date?new Date(X.date):null;if(!d)return 'vs';const t0=new Date();t0.setHours(0,0,0,0);const dd=Math.round((new Date(d).setHours(0,0,0,0)-t0)/864e5);return `<span style="font-size:32px">${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span><div class="hint" style="margin:4px 0 0;font-family:var(--body);font-size:14px">${dd===0?'Today':dd===1?'Tomorrow':d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'})}</div>`;})():`${L[0][1]} – ${L[1][1]}`}</div>`:''}`).join('')}</div>
- <div class="ginfo" style="text-align:center">${info}${X.det?` · Line ${X.det}`:X.spread!=null?` · Line ${X.ha||''} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`;
+ <div class="ginfo" style="text-align:center">${info}</div>`;
 }
 function leadersHTML(sum){
  if(!sum||!sum.leaders||!sum.leaders.length)return '';
@@ -1226,13 +1227,13 @@ function renderMatch(ctx,R){
  const secs=[];
  if(soc){
   const dc1=P(hw+dr),dc2=P(aw+dr),dc3=P(hw+aw),dnbH=hw/(hw+aw||1);
-  secs.push(T('Match result',['Market','Pick','Chance','Fair odds'],[['1X2',h+' win',P(hw)],['1X2','Draw',P(dr)],['1X2',a+' win',P(aw)],['Double chance',h+' or draw',dc1],['Double chance',a+' or draw',dc2],['Double chance',h+' or '+a,dc3],['Draw no bet',h,dnbH],['Draw no bet',a,1-dnbH]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td>${pctCell(r[2])}<td>${amer(r[2])}</td></tr>`)));
+  secs.push(T('Match result',['Market','Pick','Chance'],[['1X2',h+' win',P(hw)],['1X2','Draw',P(dr)],['1X2',a+' win',P(aw)],['Double chance',h+' or draw',dc1],['Double chance',a+' or draw',dc2],['Double chance',h+' or '+a,dc3],['Draw no bet',h,dnbH],['Draw no bet',a,1-dnbH]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td>${pctCell(r[2])}</tr>`)));
   const lines=[...new Set([.5,1.5,2.5,3.5,4.5,5.5,6.5,...(dk&&dk.tot!=null?[dk.tot]:[]),...(liveL!=null?[liveL]:[])])].sort((p,q)=>p-q).map(L=>{const o=share((x,y)=>x+y>L),isB=dk&&dk.tot===L,isL=liveL===L;return `<tr${isB||isL?' class="bookrow"':''}><td>Total goals${isL?' <span class="pill livep">Live line</span>':isB?' <span class="pill pass">DraftKings</span>':''}</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;});
   const btts=share((x,y)=>x>0&&y>0);
   secs.push(T('Goals: over / under',['Market','Line','Over','Under'],[...lines,`<tr><td>Both teams score</td><td>Yes / No</td>${pctCell(btts)}${pctCell(1-btts)}</tr>`,...[.5,1.5,2.5].map(L=>{const o=share((x)=>x>L);return `<tr><td>${h} goals</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;}),...[.5,1.5,2.5].map(L=>{const o=share((x,y)=>y>L);return `<tr><td>${a} goals</td><td>${L}</td>${pctCell(o)}${pctCell(1-o)}</tr>`;})]));
   secs.push(T('Handicap ('+h+')',['Line',h+' covers',a+' covers'],[...new Set([-2.5,-1.5,-.5,.5,1.5,2.5,...(dk&&dk.spH!=null?[dk.spH]:[])])].sort((p,q)=>p-q).map(L=>{const c=share((x,y)=>x-y+L>0),isB=dk&&dk.spH===L;return `<tr${isB?' class="bookrow"':''}><td>${h} ${L>0?'+':''}${L}${isB?' <span class="pill pass">DraftKings</span>':''}</td>${pctCell(c)}${pctCell(1-c)}</tr>`;})));
   const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]).slice(0,8);
-  secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance','Fair odds'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`)));
+  secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}</tr>`)));
   [[btts,'Both teams score'],[P(hw+dr),h+' or draw'],[P(aw+dr),a+' or draw']].forEach(([p,t])=>most.push({t,p}));
   [.5,1.5,2.5,3.5].forEach(L=>{const o=share((x,y)=>x+y>L);most.push({t:'Over '+L+' goals',p:o},{t:'Under '+L+' goals',p:1-o});});
  }else{
@@ -1244,9 +1245,9 @@ function renderMatch(ctx,R){
   const tt=(arr,nm,ex)=>{const L=Math.round(ex)-.5;return [L-5,L,L+5].map(x=>{let o=0;for(let i=0;i<n;i++)if(arr[i]>x)o++;return `<tr><td>${nm}</td><td>${x}</td>${pctCell(o/n)}${pctCell(1-o/n)}</tr>`;});};
   secs.push(T('Team totals',['Team','Line','Over','Under'],[...tt(A,a,eA),...tt(H,h,eH)]));
   const bands=ctx.lg==='NBA'?[[1,5],[6,10],[11,15],[16,99]]:[[1,3],[4,7],[8,14],[15,99]];
-  const bandRows=[];for(const [s,nm] of [[1,h],[-1,a]])for(const [lo,hi] of bands){let c=0;for(let i=0;i<n;i++){const m=(H[i]-A[i])*s;if(m>=lo&&m<=hi)c++;}bandRows.push(`<tr><td>${nm} by ${hi>90?lo+'+':lo+'–'+hi}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`);}
-  secs.push(T('Winning margin',['Result','Chance','Fair odds'],bandRows));
-  if(ctx.lg==='NFL'){const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]).slice(0,6);secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance','Fair odds'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}<td>${amer(c/n)}</td></tr>`)));}
+  const bandRows=[];for(const [s,nm] of [[1,h],[-1,a]])for(const [lo,hi] of bands){let c=0;for(let i=0;i<n;i++){const m=(H[i]-A[i])*s;if(m>=lo&&m<=hi)c++;}bandRows.push(`<tr><td>${nm} by ${hi>90?lo+'+':lo+'–'+hi}</td>${pctCell(c/n)}</tr>`);}
+  secs.push(T('Winning margin',['Result','Chance'],bandRows));
+  if(ctx.lg==='NFL'){const top=[...sc.entries()].sort((p,q)=>q[1]-p[1]).slice(0,6);secs.push(T('Most likely final scores',[`${h} – ${a}`,'Chance'],top.map(([k,c])=>`<tr><td>${k.replace('-',' – ')}</td>${pctCell(c/n)}</tr>`)));}
   most.push({t:h+' win',p:P(hw)},{t:a+' win',p:P(aw)});
  }
  // player props: one row per outcome, highest chance first
@@ -1260,11 +1261,11 @@ function renderMatch(ctx,R){
    items.push({...base,label:`Over ${L}`,p:pO},{...base,label:`Under ${L}`,p:1-pO});
    for(const m of (MILE[k]||[]))items.push({...base,label:`${m}+`,p:histGE(hh,m)});}}
  const list=items.filter(x=>(x.p>=.286&&x.p<=.714)||(x.any&&x.p>=.08&&x.p<.95)).sort((p,q)=>q.p-p.p);
- const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td>${x.proj}</td><td>${x.range}</td></tr>`;
+ const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${x.proj}</td><td>${x.range}</td></tr>`;
  const anyList=list.filter(x=>x.any).slice(0,24),mainList=list.filter(x=>!x.any||(x.p>=.286&&x.p<=.714));
- const propRows=mainList.slice(0,8).map(rowH),moreRows=mainList.slice(8,60).map(rowH);
+ const propRows=mainList.slice(0,80).map(rowH),moreRows=[];
  const bk=BOOKS[0];
- const anyRow=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td><b style="color:var(--good)">${amer(x.p*.97)}</b></td></tr>`;
+ const anyRow=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td><b style="color:var(--good)">${amer(x.p*.97)}</b></td></tr>`;
  const anyHTML=anyList.length?`<div class="card msec"><h3>Anytime props · goals, assists, bookings, touchdowns, sacks</h3>
   <div class="bookbar"><span class="hint" style="margin:0"><span class="bdot" style="background:${bk.c}"></span> DraftKings</span><a class="btn" style="padding:8px 14px;font-size:13px;margin-left:auto" href="${bk.u}" target="_blank" rel="noopener">Open ${bk.n} ↗</a></div>
   <div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Bet at ${bk.n} if better than</th></tr></thead><tbody>${anyList.map(anyRow).join('')}</tbody></table></div>
@@ -1281,9 +1282,9 @@ function renderMatch(ctx,R){
   if(avail.length)dkProps=`<div class="card msec"><h3>Player props on DraftKings · updated ${MATCH.propsAt||''}</h3><div class="hint" style="margin:0 0 10px">Only props DraftKings is offering right now with decent odds (between -250 and +250), sorted by the model’s chance, highest first. Refreshes every minute until the game starts.${noPrice?' DraftKings doesn’t share NFL prop prices in this feed, so those rows show the line and the model’s fair odds.':''}</div>${topHTML(avail)}${tableHTML(avail.slice(0,60))}</div>`;
  }
  const mostTop=most.filter(m=>m.p>=.55&&m.p<.97).sort((p,q)=>q.p-p.p).slice(0,12);
- const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
- const propsHTML=(dkProps?'':propRows.length?`<div class="card msec"><h3>${ctx.st==='live'?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims each</h3><div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings doesn’t post live props in the free feed, so these are the model’s live lines, limited to fair odds between -250 and +250.':'DraftKings props aren’t posted for this game yet. These are the model’s lines, limited to fair odds between -250 and +250.'}</div><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':(ctx.lg==='EuroLeague'?'Player props aren’t available for EuroLeague in the free feed.':'Player props need the live feed. Open Edge Lab from the website link.')}</div></div>`);
- const oddsBtn=LCFG[ctx.lg]?`<div class="run"><button class="btn ghost" onclick="openLive(${MATCH.idx})">Compare with my sportsbook odds</button></div>`:'';
+ const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
+ const propsHTML=(dkProps?'':propRows.length?`<div class="card msec"><h3>${ctx.st==='live'?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims each</h3><div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'The model’s live lines. Chance = how often the player hits it in the simulations.':'The model’s lines. Chance = how often the player hits it in the simulations (only 29%–71% shown).'}</div><div class="tw propscroll" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':(ctx.lg==='EuroLeague'?'Player props aren’t available for EuroLeague in the free feed.':'Player props need the live feed. Open Edge Lab from the website link.')}</div></div>`);
+ const oddsBtn='';
  $('mbody').innerHTML=html+dkProps+propsHTML+oddsBtn;
  clearTimeout(MATCH.t);if(ctx.st==='live'||ctx.st==='up'){MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},ctx.st==='live'?15000:60000);}
 }
@@ -1382,10 +1383,10 @@ function lockHTML(g){const [lg,st,a,h]=g,ufc=lg==='UFC';
  <div class="codebox"><input id="procode" placeholder="Access code" autocomplete="off" onkeydown="if(event.key==='Enter')tryCode()"><button class="btn ghost" style="padding:8px 12px" onclick="tryCode()">Apply</button></div></div></div>`;}
 const VIMG={};
 function venueImg(name,city){const k=name+'|'+city;if(VIMG[k])return VIMG[k];
- return VIMG[k]=(async()=>{try{const st=JSON.parse(localStorage.getItem('el_vimg')||'{}');if(k in st)return st[k];}catch(e){}
-  let u='';try{const r=await fetch('https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(name+' '+city)+'&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=1280&format=json&origin=*');const d=await r.json();const pg=Object.values((d.query&&d.query.pages)||{})[0];u=(pg&&pg.thumbnail&&pg.thumbnail.source)||'';
+ return VIMG[k]=(async()=>{try{const st=JSON.parse(localStorage.getItem('el_vimg2')||'{}');if(k in st)return st[k];}catch(e){}
+  let u='';try{const r=await fetch('https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(name+' '+city)+'&gsrlimit=5&prop=pageimages&piprop=thumbnail&pithumbsize=1280&format=json&origin=*');const d=await r.json();const ps=Object.values((d.query&&d.query.pages)||{}).filter(x=>x.thumbnail&&!/logo|\.svg|flag|crest|emblem/i.test(x.thumbnail.source)).sort((x,y)=>(x.title.toLowerCase()===name.toLowerCase()?-1:0)-(y.title.toLowerCase()===name.toLowerCase()?-1:0)||x.index-y.index);const pg=ps[0];u=(pg&&pg.thumbnail.source)||'';
    if(u&&/logo|\.svg|flag|crest|emblem/i.test(u))u='';}catch(e){}
-  try{const st=JSON.parse(localStorage.getItem('el_vimg')||'{}');st[k]=u;localStorage.setItem('el_vimg',JSON.stringify(st));}catch(e){}return u;})();}
+  try{const st=JSON.parse(localStorage.getItem('el_vimg2')||'{}');st[k]=u;localStorage.setItem('el_vimg2',JSON.stringify(st));}catch(e){}return u;})();}
 const initials=n=>String(n||'').split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const faceHTML=(src,n)=>`<span class="face"><i>${initials(n)}</i>${src?`<img src="${src}" alt="" onerror="this.remove()">`:''}</span>`;
 function infoHTML(g,sum){
@@ -1468,7 +1469,7 @@ function ufcRender(ctx,R,X){
  const pred=[['Winner',`${fav}${hint(pct0(Math.max(pH,pA)))}`],['Method',`${koP>=subP&&koP>=dec?'KO/TKO':subP>=dec?'Submission':'Decision'}${hint(`KO ${pct0(koP)} · Sub ${pct0(subP)} · Dec ${pct0(dec)}`)}`],['Goes the distance',dec>=.5?`Yes${hint(pct0(dec))}`:`No${hint(pct0(1-dec))}`],
   [`Total rounds O/U ${bo===5?'2.5':'1.5'}`,(()=>{const o=tot(bo===5?2.5:1.5);return o>=.5?`Over${hint(pct0(o))}`:`Under${hint(pct0(1-o))}`;})()],
   ['Most likely result',`${all[0][0]}${hint(pct0(all[0][1]))}`],[`${fav} wins ${mt[best[0]]}`,pct0(best[1]/n)]];
- if(ctx.ml)pred.push([`Moneyline (${ctx.ml.book})`,`${abbrOf(a)} ${ctx.ml.a>0?'+':''}${ctx.ml.a} · ${abbrOf(h)} ${ctx.ml.h>0?'+':''}${ctx.ml.h}`]);
+
  const mx=Math.max(...cell.flat());
  const grid=`<table class="rgrid"><tbody><tr><th></th><th>KO/TKO</th><th>Submission</th><th>Decision</th></tr>${[[1,h],[0,a]].map(([w,nm])=>`<tr><th style="text-align:left;white-space:nowrap">${nm}</th>${[0,1,2].map(m=>`<td><div class="rc" style="background:color-mix(in srgb,var(--accent) ${Math.round(cell[w][m]/mx*85)}%,var(--surface2))">${(cell[w][m]/n*100).toFixed(1)}%</div></td>`).join('')}</tr>`).join('')}</tbody></table>
  <div class="ggrid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));margin-top:12px">${[...Array(bo).keys()].map(r=>`<div class="rc" style="padding:12px 6px;background:color-mix(in srgb,var(--accent) ${Math.round(rc[r+1]/Math.max(...rc)*85)}%,var(--surface2))"><div style="font:700 15px var(--display)">Round ${r+1}</div>${(rc[r+1]/n*100).toFixed(1)}% finish</div>`).join('')}</div><div class="hint" style="text-align:center">Winner × method, and the chance the fight ends in each round</div>`;
@@ -1476,7 +1477,7 @@ function ufcRender(ctx,R,X){
  $('mbody').innerHTML=`<div class="card msec pred"><h2 class="ptitle">Fight prediction</h2><div class="hint" style="margin:0 0 8px">${ctx.st==='live'?`Live · from round ${ctx.rnd}`:'Generated before the fight'} · ${NSIM.toLocaleString()} simulations · ${bo} rounds · ${ctx.wc}</div>${pred.map(([l,v])=>`<div class="prow"><span>${l}</span><b>${v}</b></div>`).join('')}
  <div class="wprow"><div class="hint" style="margin:0">Win probability</div><div class="wpcells">${bH}<b>${pct0(pH)}</b><span class="wpsep"></span><b>${pct0(pA)}</b>${bA}</div></div></div>
  <div class="card msec"><h2 class="ptitle">Result probability</h2><div class="tw" style="margin:6px 0 0;box-shadow:none;border:0">${grid}</div></div>
- <div class="hint">${ctx.ml?`Win chances come from the ${ctx.ml.book} moneyline (vig removed).`:'No betting line yet, so win chances come from the fighters’ records.'} Finish rates use typical UFC rates for ${ctx.wc||'this division'}, nudged toward the favorite. Records: ${a} ${X.recA||'-'}, ${h} ${X.recH||'-'}.</div>`;
+ <div class="hint">${ctx.ml?'Win chances use the betting market as a starting point.':'Win chances come from the fighters’ records.'} Finish rates use typical UFC rates for ${ctx.wc||'this division'}, nudged toward the favorite. Records: ${a} ${X.recA||'-'}, ${h} ${X.recH||'-'}.</div>`;
 }
 
 /* ---------- search: leagues, teams, players + their stats (ESPN) ---------- */
