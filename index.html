@@ -142,6 +142,17 @@ table.mt td{vertical-align:middle}
 .pbarcell span{display:block;height:100%;background:var(--accent)}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.catbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin:0 0 14px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;display:flex;align-items:center;gap:7px;border:0;background:none;color:var(--mut);font:600 14px var(--body);padding:9px 14px;border-radius:11px;cursor:pointer;white-space:nowrap}
+.cat .ci{font-size:18px;line-height:1}
+.cat:hover{color:var(--ink);background:var(--surface2)}
+.cat.on{background:var(--accent);color:var(--accent-ink)}
+.vt{display:flex;gap:2px;background:var(--surface2);border-radius:11px;padding:3px}
+.vt button{border:0;background:none;color:var(--mut);font:600 13px var(--body);padding:7px 12px;border-radius:9px;cursor:pointer}
+.vt button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+@media(max-width:600px){.catbar{border-radius:12px}.vt{width:100%}.vt button{flex:1}}
 .fcsub{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .fcchip{border:0;background:none;color:var(--mut);font:600 13px var(--body);padding:7px 12px;border-radius:9px;cursor:pointer}
 .fcchip:hover{color:var(--ink);background:var(--surface2)}
@@ -177,14 +188,8 @@ table.mt td{vertical-align:middle}
       <div class="sub">Game simulator for NBA, NFL, MLB and soccer. Plays each matchup thousands of times and shows where the sportsbook line looks beatable.</div>
     </div>
   </div>
-  <div class="settings">
-    <span class="feed" id="feed"><i></i><span id="feedtxt">Snapshot</span></span>
-    
-    <label for="nsims">Simulations
-      <select id="nsims"><option value="10000">10,000</option><option value="20000">20,000</option><option value="50000" selected>50,000</option><option value="100000">100,000</option></select>
-    </label>
-    <label for="blend">Trust market <input type="range" id="blend" min="0" max="80" step="5" value="35"><b id="blendv" style="color:var(--ink);font-family:var(--mono)">35%</b></label>
-  </div>
+  <div hidden><span id="feed"><span id="feedtxt"></span></span><select id="nsims"><option value="50000" selected>50000</option></select><input type="range" id="blend" value="35"><b id="blendv"></b></div>
+
 </header>
 
 
@@ -690,13 +695,17 @@ function gameCard(g,idx){
   <div class="gfoot"><span class="gopen">${st==='final'?'See result':'Open simulations'} →</span><a href="${href}" onclick="event.stopPropagation()">Real ↗</a></div></div>`;
 }
 let gNext='All',gView='games';
+const CICON={All:'🏟️',FC:'⚽',NBA:'🏀',MLB:'⚾',NFL:'🏈',NHL:'🏒',Tennis:'🎾',Special:'⭐'};
+function topBar(){const cur=gView==='next'?gNext:gSport;
+ return `<div class="catbar"><div class="cats">${CATS.map(s=>`<button class="cat${cur===s?' on':''}" onclick="${gView==='next'?`gNext='${s}'`:`gSport='${s}';gDate=null`};renderGames()"><span class="ci">${CICON[s]||''}</span><span>${s}</span></button>`).join('')}</div>
+ <div class="vt"><button class="${gView==='games'?'on':''}" onclick="gView='games';renderGames()">Games</button><button class="${gView==='next'?'on':''}" onclick="gView='next';gNext=gSport;renderGames()">Next matches</button></div></div>`;}
 function viewToggle(){const b=(v,l)=>`<button class="btn ${gView===v?'':'ghost'}" style="padding:9px 18px" onclick="gView='${v}';renderGames()">${l}</button>`;return `<div style="display:flex;gap:8px;margin-bottom:14px">${b('games','Games')}${b('next','Next matches')}</div>`;}
 function renderNext(){
  const L=GAMES.list,dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;
  const up=L.filter(g=>g[1]==='up'&&inSport(g,gNext)).sort((p,q)=>dt(p)-dt(q));
  const days=new Map();for(const g of up){const d=dt(g)?new Date(dt(g)).toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}):'Upcoming';if(!days.has(d))days.set(d,[]);days.get(d).push(g);}
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${CATS.map(s=>chip(gNext===s,s==='Special'?'★ Special':s)).join('')}</div>
+ $('p-games').innerHTML=topBar()+`
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
@@ -712,8 +721,7 @@ function renderByDate(){
  const sports=CATS,chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
  const lgs=gSport==='FC'?(gFC==='INTL'?INTL:[gFC]):gSport==='Special'?LGORDER:[gSport],nm=LGNAME;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s==="Special"?"★ Special":s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
- ${gSport==='FC'?`<div class="fcsub">${FCSUB.map(([k,l])=>`<button class="fcchip${gFC===k?' on':''}" onclick="gFC='${k}';gDate=null;renderGames()">${l}</button>`).join('')}</div>`:''}${gSport==='Special'?'<div class="hint" style="margin:-4px 0 10px">Picked automatically: every EuroLeague game, national-TV NBA/NFL/NHL/MLB games, big-club and top-nation soccer, and tennis Finals, Slams and late rounds.</div>':''}
+ $('p-games').innerHTML=topBar()+` ${gSport==='FC'?`<div class="fcsub">${FCSUB.map(([k,l])=>`<button class="fcchip${gFC===k?' on':''}" onclick="gFC='${k}';gDate=null;renderGames()">${l}</button>`).join('')}</div>`:''}${gSport==='Special'?'<div class="hint" style="margin:-4px 0 10px">Picked automatically: every EuroLeague game, national-TV NBA/NFL/NHL/MLB games, big-club and top-nation soccer, and tennis Finals, Slams and late rounds.</div>':''}
  <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
  ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
  const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
@@ -726,9 +734,7 @@ function renderGames(){
  const f=L.filter(g=>inSport(g,gSport)&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;renderByDate.scrolled=0;
- $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">17</div><div class="s">FC · NBA · MLB · NFL · NHL · Tennis · EuroLeague</div></div></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s==='Special'?'★ Special':s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
- <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
+ gStat='All';$('p-games').innerHTML=topBar()+`<div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
  ${f.length?LGORDER.map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm=LGNAME[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
