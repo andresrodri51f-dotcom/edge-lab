@@ -643,7 +643,7 @@ function gameCard(g,idx){
  if(pr){const pa=pr[0],ph=pr[1],pd=pr[2]||0;
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
- const line=X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
+ const line=X.el?`<div class="gline">Model total ${X.total}</div>`:X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl'}[lg]||'soccer');
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openMatch(${idx})" onkeydown="if(event.key==='Enter')openMatch(${idx})" aria-label="Open ${a} vs ${h}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
