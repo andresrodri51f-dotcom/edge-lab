@@ -257,7 +257,7 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .gpk{display:flex;flex-direction:column;align-items:flex-end;gap:3px}.gpk b{font:700 15px var(--display);color:var(--accent);letter-spacing:.02em}.gpk i{font-style:normal;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
 .gpk .mbar{width:80px;height:4px;border-radius:99px;background:var(--surface2);overflow:hidden}.gpk .mbar span{display:block;height:100%;background:var(--accent)}
 .gsub{grid-column:1/-1;color:var(--mut);font-size:11px;margin-top:-4px}
-.bnav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(14,16,20,.96);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(14,16,20,.96);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
 .bnav button{border:0;background:none;color:var(--mut);font:600 11px var(--body);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;cursor:pointer;position:relative}
 .bnav button .bi{font-size:20px;line-height:1;filter:grayscale(1) brightness(1.4);opacity:.8}
 .bnav button.on{color:var(--accent)}.bnav button.on .bi{filter:none;opacity:1}
@@ -825,10 +825,10 @@ function renderByDate(){
  const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
 }
 function renderNav(){const nl=GAMES.list.filter(g=>g[1]==='live').length,b=(v,i,l,fn,extra='')=>`<button class="${v===NAVON?'on':''}" onclick="${fn}"><span class="bi">${i}</span>${l}${extra}</button>`;
- $('bnav').innerHTML=b('games','🏟️','Games',"NAVON='games';gView='games';closeAll();renderGames()")+b('live','📡','Live',"NAVON='live';gView='live';closeAll();renderGames()",nl?`<span class="cnt">${nl}</span>`:'')+b('search','🔍','Search',"openSearch()")+b('pro','💎',isPro()?'Pro ✓':'Pro',"openPro()");
+ $('bnav').innerHTML=b('games','🏟️','Games',"NAVON='games';gView='games';closeAll();renderGames()")+b('live','📡','Live',"NAVON='live';gView='live';closeAll();renderGames()",nl?`<span class="cnt">${nl}</span>`:'')+b('play','🎮','Play',"closeAll();openGames()")+b('search','🔍','Search',"closeAll();openSearch()")+b('pro','💎',isPro()?'Pro ✓':'Pro',"closeAll();openPro()");
  const pb=$('probtn');if(pb)pb.textContent=isPro()?'PRO ✓':'GET PRO';}
 let NAVON='games';
-function closeAll(){if(typeof MATCH!=='undefined'&&MATCH)closeMatch();try{closeSearch();}catch(e){}const pb=$('probox');if(pb)pb.style.display='none';document.body.style.overflow='';}
+function closeAll(){if(typeof MATCH!=='undefined'&&MATCH)closeMatch();try{closeSearch();}catch(e){}const pb=$('probox');if(pb)pb.style.display='none';try{closeGames();}catch(e){}document.body.style.overflow='';}
 let gLive='All';
 function renderLiveAll(){const L=GAMES.list,all=L.filter(g=>g[1]==='live'),cnt=c=>all.filter(g=>c==='All'||inSport(g,c)).length;
  const lv=all.filter(g=>gLive==='All'||inSport(g,gLive));
@@ -1681,6 +1681,452 @@ window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 $('blend').oninput=e=>$('blendv').textContent=e.target.value+'%';
 ['nba','nfl','mlb'].forEach(renderSport);renderProps();renderToday();renderGames();
 show(location.hash.slice(1));
+</script>
+<script>
+/* ================= MINIGAMES: career simulator + footy tic tac toe ================= */
+(function(){
+const $g=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a),ri=(a,b)=>Math.floor(rnd(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)],clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+
+/* ---------- shared clubs ---------- */
+const CLUB={RMA:['Real Madrid',86],BAR:['Barcelona',85],MUN:['Man United',81],MCI:['Man City',88],LIV:['Liverpool',86],CHE:['Chelsea',82],ARS:['Arsenal',85],TOT:['Tottenham',79],JUV:['Juventus',80],INT:['Inter',84],MIL:['AC Milan',80],BAY:['Bayern Munich',86],PSG:['Paris SG',85],ATM:['Atlético Madrid',82],BVB:['Dortmund',80]};
+const LOGO={RMA:86,BAR:83,MUN:360,MCI:382,LIV:364,CHE:363,ARS:359,TOT:367,JUV:111,INT:110,MIL:103,BAY:132,PSG:160,ATM:1068,BVB:124};
+const clubLogo=k=>`https://a.espncdn.com/i/teamlogos/soccer/500/${LOGO[k]}.png`;
+const NAT={ARG:['Argentina','ar'],BRA:['Brazil','br'],FRA:['France','fr'],ESP:['Spain','es'],ENG:['England','gb-eng'],POR:['Portugal','pt'],GER:['Germany','de'],NED:['Netherlands','nl'],ITA:['Italy','it'],BEL:['Belgium','be'],URU:['Uruguay','uy'],COL:['Colombia','co'],MEX:['Mexico','mx'],USA:['USA','us'],GUA:['Guatemala','gt'],CRO:['Croatia','hr']};
+const flag=c=>`https://flagcdn.com/w80/${(NAT[c]||['',c.toLowerCase()])[1]}.png`;
+
+/* ---------- player data for tic tac toe (nation | clubs among the 15 above) ---------- */
+const PD=`Lionel Messi|ARG|BAR,PSG
+Cristiano Ronaldo|POR|MUN,RMA,JUV
+Neymar|BRA|BAR,PSG
+Kylian Mbappé|FRA|PSG,RMA
+Zlatan Ibrahimović|SWE|JUV,INT,BAR,MIL,PSG,MUN
+Ángel Di María|ARG|RMA,MUN,PSG,JUV
+Thierry Henry|FRA|JUV,ARS,BAR
+Luís Figo|POR|BAR,RMA,INT
+Ronaldo Nazário|BRA|BAR,INT,RMA,MIL
+Ronaldinho|BRA|PSG,BAR,MIL
+Kaká|BRA|MIL,RMA
+Andrea Pirlo|ITA|INT,MIL,JUV
+Clarence Seedorf|NED|RMA,INT,MIL
+Edgar Davids|NED|MIL,JUV,BAR,INT,TOT
+Patrick Vieira|FRA|MIL,ARS,JUV,INT,MCI
+David Beckham|ENG|MUN,RMA,MIL,PSG
+Michael Owen|ENG|LIV,RMA,MUN
+Luis Suárez|URU|LIV,BAR,ATM
+Fernando Torres|ESP|ATM,LIV,CHE,MIL
+Xabi Alonso|ESP|LIV,RMA,BAY
+Thiago Alcântara|ESP|BAR,BAY,LIV
+Philippe Coutinho|BRA|INT,LIV,BAR,BAY
+Robert Lewandowski|POL|BVB,BAY,BAR
+Mario Götze|GER|BVB,BAY
+Mats Hummels|GER|BAY,BVB
+Robin van Persie|NED|ARS,MUN
+Arjen Robben|NED|CHE,RMA,BAY
+Ruud van Nistelrooy|NED|MUN,RMA
+Wesley Sneijder|NED|RMA,INT
+Samuel Eto'o|CMR|RMA,BAR,INT,CHE
+Cesc Fàbregas|ESP|ARS,BAR,CHE
+Pedro Rodríguez|ESP|BAR,CHE
+Willian|BRA|CHE,ARS
+David Luiz|BRA|CHE,PSG,ARS
+Thiago Silva|BRA|MIL,PSG,CHE
+Gonzalo Higuaín|ARG|RMA,JUV,MIL,CHE
+Carlos Tevez|ARG|MUN,MCI,JUV
+Sergio Agüero|ARG|ATM,MCI,BAR
+Javier Mascherano|ARG|LIV,BAR
+Paulo Dybala|ARG|JUV
+Lautaro Martínez|ARG|INT
+Hernán Crespo|ARG|INT,MIL,CHE
+Juan Sebastián Verón|ARG|MUN,CHE,INT
+Javier Zanetti|ARG|INT
+Diego Simeone|ARG|INT,ATM
+Antoine Griezmann|FRA|ATM,BAR
+Karim Benzema|FRA|RMA
+Paul Pogba|FRA|MUN,JUV
+N'Golo Kanté|FRA|CHE
+Nicolas Anelka|FRA|ARS,RMA,PSG,LIV,MCI,CHE,JUV
+Olivier Giroud|FRA|ARS,CHE,MIL
+Zinedine Zidane|FRA|JUV,RMA
+Lilian Thuram|FRA|JUV,BAR
+Franck Ribéry|FRA|BAY
+Ousmane Dembélé|FRA|BVB,BAR,PSG
+Kingsley Coman|FRA|PSG,JUV,BAY
+Raphaël Varane|FRA|RMA,MUN
+Claude Makélélé|FRA|RMA,CHE,PSG
+Samir Nasri|FRA|ARS,MCI
+Gaël Clichy|FRA|ARS,MCI
+William Gallas|FRA|CHE,ARS,TOT
+Emmanuel Petit|FRA|ARS,BAR,CHE
+Benjamin Pavard|FRA|BAY,INT
+Lucas Hernández|FRA|ATM,BAY,PSG
+Theo Hernández|FRA|ATM,RMA,MIL
+Blaise Matuidi|FRA|PSG,JUV
+Hugo Lloris|FRA|TOT
+Mamadou Sakho|FRA|PSG,LIV
+Alexandre Lacazette|FRA|ARS
+Mathieu Flamini|FRA|ARS,MIL
+Eduardo Camavinga|FRA|RMA
+Marc Overmars|NED|ARS,BAR
+Dennis Bergkamp|NED|INT,ARS
+Frenkie de Jong|NED|BAR
+Virgil van Dijk|NED|LIV
+Matthijs de Ligt|NED|JUV,BAY,MUN
+Edwin van der Sar|NED|JUV,MUN
+Jaap Stam|NED|MUN,MIL
+Patrick Kluivert|NED|MIL,BAR
+Memphis Depay|NED|MUN,BAR,ATM
+Gareth Bale|WAL|TOT,RMA
+Luka Modrić|CRO|TOT,RMA
+Ivan Rakitić|CRO|BAR
+Mario Mandžukić|CRO|BAY,ATM,JUV,MIL
+Ivan Perišić|CRO|BVB,INT,BAY,TOT
+Toni Kroos|GER|BAY,RMA
+Mesut Özil|GER|RMA,ARS
+Sami Khedira|GER|RMA,JUV
+Leroy Sané|GER|MCI,BAY
+İlkay Gündoğan|GER|BVB,MCI,BAR
+Michael Ballack|GER|BAY,CHE
+Bastian Schweinsteiger|GER|BAY,MUN
+Lukas Podolski|GER|BAY,ARS,INT
+Per Mertesacker|GER|ARS
+Jérôme Boateng|GER|MCI,BAY
+Kai Havertz|GER|CHE,ARS
+Timo Werner|GER|CHE,TOT
+Manuel Neuer|GER|BAY
+Thomas Müller|GER|BAY
+Miroslav Klose|GER|BAY
+Jürgen Klinsmann|GER|INT,TOT,BAY
+Lothar Matthäus|GER|BAY,INT
+Emre Can|GER|BAY,LIV,JUV,BVB
+Marco Reus|GER|BVB
+Joshua Kimmich|GER|BAY
+Sergio Ramos|ESP|RMA,PSG
+Gerard Piqué|ESP|MUN,BAR
+Andrés Iniesta|ESP|BAR
+Xavi Hernández|ESP|BAR
+Sergio Busquets|ESP|BAR
+David Villa|ESP|BAR,ATM
+Juan Mata|ESP|CHE,MUN
+David de Gea|ESP|ATM,MUN
+Rodri|ESP|ATM,MCI
+Álvaro Morata|ESP|RMA,JUV,CHE,ATM,MIL
+Fernando Llorente|ESP|JUV,TOT
+Pepe Reina|ESP|BAR,LIV,BAY,MIL
+César Azpilicueta|ESP|CHE,ATM
+Jordi Alba|ESP|BAR
+Marcos Alonso|ESP|CHE,BAR
+Isco|ESP|RMA
+Dani Carvajal|ESP|RMA
+Marco Asensio|ESP|RMA,PSG
+Álvaro Arbeloa|ESP|LIV,RMA
+Raúl González|ESP|RMA
+Santi Cazorla|ESP|ARS
+Mikel Arteta|ESP|PSG,ARS
+Ferran Torres|ESP|MCI,BAR
+Wayne Rooney|ENG|MUN
+Frank Lampard|ENG|CHE,MCI
+Steven Gerrard|ENG|LIV
+Raheem Sterling|ENG|LIV,MCI,CHE,ARS
+Ashley Cole|ENG|ARS,CHE
+Harry Kane|ENG|TOT,BAY
+Jadon Sancho|ENG|BVB,MUN,CHE
+Kieran Trippier|ENG|TOT,ATM
+Kyle Walker|ENG|TOT,MCI
+Jude Bellingham|ENG|BVB,RMA
+Owen Hargreaves|ENG|BAY,MUN,MCI
+Steve McManaman|ENG|LIV,RMA,MCI
+Paul Ince|ENG|MUN,INT,LIV
+Daniel Sturridge|ENG|MCI,CHE,LIV
+Alex Oxlade-Chamberlain|ENG|ARS,LIV
+Sol Campbell|ENG|TOT,ARS
+Peter Crouch|ENG|LIV,TOT
+Michael Carrick|ENG|TOT,MUN
+Teddy Sheringham|ENG|TOT,MUN
+Glen Johnson|ENG|CHE,LIV
+Scott Parker|ENG|CHE,TOT
+Joe Cole|ENG|CHE,LIV
+Bruno Fernandes|POR|MUN
+Bernardo Silva|POR|MCI
+João Félix|POR|ATM,CHE,BAR,MIL
+Deco|POR|BAR,CHE
+Ricardo Carvalho|POR|CHE,RMA
+Pepe|POR|RMA
+Nani|POR|MUN
+Rúben Dias|POR|MCI
+João Cancelo|POR|JUV,MCI,BAY,BAR
+Rui Costa|POR|MIL
+Paulo Ferreira|POR|CHE
+Fábio Coentrão|POR|RMA
+Dani Alves|BRA|BAR,JUV,PSG
+Marcelo|BRA|RMA
+Casemiro|BRA|RMA,MUN
+Vinícius Júnior|BRA|RMA
+Rivaldo|BRA|BAR,MIL
+Cafu|BRA|MIL
+Roberto Carlos|BRA|INT,RMA
+Alisson Becker|BRA|LIV
+Fabinho|BRA|LIV
+Roberto Firmino|BRA|LIV
+Gabriel Jesus|BRA|MCI,ARS
+Fernandinho|BRA|MCI
+Ederson|BRA|MCI
+Oscar|BRA|CHE
+Ramires|BRA|CHE
+Lúcio|BRA|BAY,INT,JUV
+Maicon|BRA|INT,MCI
+Júlio César|BRA|INT
+Adriano|BRA|INT
+Alex Sandro|BRA|JUV
+Marquinhos|BRA|PSG
+Robinho|BRA|RMA,MCI,MIL
+Douglas Costa|BRA|BAY,JUV
+Lucas Moura|BRA|PSG,TOT
+Gianluigi Buffon|ITA|JUV,PSG
+Alessandro Del Piero|ITA|JUV
+Leonardo Bonucci|ITA|JUV,MIL
+Giorgio Chiellini|ITA|JUV
+Marco Verratti|ITA|PSG
+Jorginho|ITA|CHE,ARS
+Mario Balotelli|ITA|INT,MCI,MIL,LIV
+Christian Vieri|ITA|JUV,ATM,INT,MIL
+Filippo Inzaghi|ITA|JUV,MIL
+Fabio Cannavaro|ITA|INT,JUV,RMA
+Gianluca Zambrotta|ITA|JUV,BAR,MIL
+Alessandro Nesta|ITA|MIL
+Paolo Maldini|ITA|MIL
+Gennaro Gattuso|ITA|MIL
+Roberto Baggio|ITA|JUV,MIL,INT
+Federico Chiesa|ITA|JUV,LIV
+Nicolò Barella|ITA|INT
+Eden Hazard|BEL|CHE,RMA
+Kevin De Bruyne|BEL|CHE,MCI
+Romelu Lukaku|BEL|CHE,MUN,INT
+Thibaut Courtois|BEL|CHE,ATM,RMA
+Vincent Kompany|BEL|MCI
+Thomas Vermaelen|BEL|ARS,BAR
+Jan Vertonghen|BEL|TOT
+Toby Alderweireld|BEL|ATM,TOT
+Yannick Carrasco|BEL|ATM
+Axel Witsel|BEL|BVB,ATM
+Thorgan Hazard|BEL|CHE,BVB
+Marouane Fellaini|BEL|MUN
+Divock Origi|BEL|LIV,MIL
+Erling Haaland|NOR|BVB,MCI
+Mohamed Salah|EGY|CHE,LIV
+Sadio Mané|SEN|LIV,BAY
+Son Heung-min|KOR|TOT
+Riyad Mahrez|ALG|MCI
+Achraf Hakimi|MAR|RMA,BVB,INT,PSG
+Pierre-Emerick Aubameyang|GAB|BVB,ARS,BAR,CHE
+Alexis Sánchez|CHI|BAR,ARS,MUN,INT
+Arturo Vidal|CHI|JUV,BAY,BAR,INT
+Edinson Cavani|URU|PSG,MUN
+Diego Forlán|URU|MUN,ATM,INT
+Diego Godín|URU|ATM,INT
+Federico Valverde|URU|RMA
+Darwin Núñez|URU|LIV
+Radamel Falcao|COL|ATM,MUN,CHE
+James Rodríguez|COL|RMA,BAY
+Andriy Shevchenko|UKR|MIL,CHE
+Petr Čech|CZE|CHE,ARS
+Yaya Touré|CIV|BAR,MCI
+Kolo Touré|CIV|ARS,MCI,LIV
+Michael Essien|GHA|CHE,RMA,MIL
+Henrik Larsson|SWE|BAR,MUN
+Christian Pulisic|USA|BVB,CHE,MIL
+Julián Álvarez|ARG|MCI,ATM
+Enzo Fernández|ARG|CHE
+Alexis Mac Allister|ARG|LIV
+Rodrigo De Paul|ARG|ATM
+Ángel Correa|ARG|ATM
+Gabriel Heinze|ARG|PSG,MUN,RMA
+Esteban Cambiasso|ARG|RMA,INT
+Walter Samuel|ARG|RMA,INT
+Pablo Zabaleta|ARG|MCI
+Martín Demichelis|ARG|BAY,MCI
+Cristian Romero|ARG|JUV,TOT
+Lisandro Martínez|ARG|MUN
+Emiliano Martínez|ARG|ARS
+Giovani Lo Celso|ARG|PSG,TOT
+Erik Lamela|ARG|TOT
+Ezequiel Lavezzi|ARG|PSG
+Javier Pastore|ARG|PSG
+Mauro Icardi|ARG|INT,PSG
+Rafael Márquez|MEX|BAR
+Javier Hernández|MEX|MUN,RMA`;
+const PLAYERS=PD.trim().split('\n').map(l=>{const [n,c,cl]=l.split('|');return {n,c,cl:cl.split(','),k:norm(n)};});
+const ALIAS={'cr7':'Cristiano Ronaldo','ronaldo':'Cristiano Ronaldo','r9':'Ronaldo Nazário','messi':'Lionel Messi','chicharito':'Javier Hernández','xavi':'Xavi Hernández','raul':'Raúl González','alisson':'Alisson Becker','vinicius':'Vinícius Júnior','vini':'Vinícius Júnior','zlatan':'Zlatan Ibrahimović','kun aguero':'Sergio Agüero','aguero':'Sergio Agüero','fabregas':'Cesc Fàbregas','pedro':'Pedro Rodríguez','dibu martinez':'Emiliano Martínez','son':'Son Heung-min'};
+function findPlayer(q){const k=norm(q);if(!k)return null;if(ALIAS[k])return PLAYERS.find(p=>p.n===ALIAS[k]);
+ return PLAYERS.find(p=>p.k===k)||PLAYERS.find(p=>p.k.split(' ').slice(-1)[0]===k&&PLAYERS.filter(x=>x.k.split(' ').slice(-1)[0]===k).length===1)||null;}
+
+/* ---------- styles ---------- */
+const css=`#mgbox{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:41;padding-bottom:80px}
+.mgw{max-width:760px;margin:0 auto;padding:14px}
+.mgtop{display:flex;align-items:center;gap:10px;margin-bottom:12px}.mgtop h2{margin:0;font:800 24px var(--display);text-transform:uppercase;letter-spacing:.03em}
+.mgback{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:18px;cursor:pointer}
+.mghub{display:grid;gap:12px}
+.mgcard{display:flex;gap:14px;align-items:center;padding:18px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(135deg,var(--surface),var(--surface2));cursor:pointer;text-align:left;color:var(--ink);font:inherit;width:100%}
+.mgcard:hover{border-color:var(--accent)}.mgcard .ic{width:62px;height:62px;border-radius:16px;display:grid;place-items:center;font-size:32px;background:color-mix(in srgb,var(--accent) 14%,var(--surface2));flex:none}
+.mgcard b{font:800 20px var(--display);text-transform:uppercase;letter-spacing:.03em;display:block}.mgcard span{color:var(--mut);font-size:13px}
+.mgbtn{border:0;border-radius:12px;padding:12px 18px;background:var(--accent);color:var(--accent-ink);font:700 14px var(--body);cursor:pointer}
+.mgbtn.alt{background:var(--surface2);color:var(--ink);border:1px solid var(--line)}
+.mgopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0 14px}
+.mgopt{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px;cursor:pointer;font:600 13px var(--body);text-align:left;display:flex;gap:8px;align-items:center}
+.mgopt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.mgopt img{width:26px;height:18px;object-fit:cover;border-radius:3px}.mgopt img.cl{width:26px;height:26px;object-fit:contain}
+.mglab{font:700 11px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-top:6px}
+.mginput{width:100%;background:var(--surface2);border:1px solid var(--line2);border-radius:12px;color:var(--ink);padding:12px;font:600 15px var(--body)}
+.cstat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.cstat div{background:var(--surface2);border-radius:12px;padding:10px;text-align:center}.cstat b{display:block;font:800 24px var(--display)}.cstat span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.ovr{display:inline-grid;place-items:center;width:58px;height:58px;border-radius:14px;background:var(--grad);color:#04140b;font:800 26px var(--display)}
+.clog{display:flex;flex-direction:column;gap:6px;margin-top:10px}.clog div{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;background:var(--surface2);font-size:13px}.clog img{width:24px;height:24px;object-fit:contain}.clog .yr{font:700 13px var(--display);color:var(--mut);min-width:54px}
+.clog .tr{margin-left:auto;white-space:nowrap}
+.dchoice{display:grid;gap:8px;margin-top:10px}.dchoice button{display:flex;gap:12px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:12px;cursor:pointer;font:inherit}.dchoice button:hover{border-color:var(--accent)}.dchoice img{width:34px;height:34px;object-fit:contain}.dchoice small{display:block;color:var(--mut)}
+.ttt{display:grid;grid-template-columns:76px repeat(3,1fr);gap:6px;margin:12px 0}
+.ttt .hd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;font:700 11px var(--body);color:var(--mut);padding:6px 2px;min-height:76px}
+.ttt .hd img{width:38px;height:38px;object-fit:contain}.ttt .hd img.fl{width:40px;height:27px;object-fit:cover;border-radius:4px}
+.ttt .cell{aspect-ratio:1;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:4px;text-align:center;color:var(--ink);font:inherit}
+.ttt .cell:hover{border-color:var(--accent)}.ttt .cell.sel{border:2px solid var(--accent)}
+.ttt .cell .mk{font:800 40px/1 var(--display)}.ttt .cell small{font-size:10px;color:var(--mut);line-height:1.1}
+.ttt .cell.X{background:color-mix(in srgb,var(--accent) 16%,var(--surface))}.ttt .cell.X .mk{color:var(--accent)}
+.ttt .cell.O{background:color-mix(in srgb,var(--accent2) 16%,var(--surface))}.ttt .cell.O .mk{color:var(--accent2)}
+.ttt .cell.win{box-shadow:0 0 0 3px #fff inset}
+.turn{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface2)}
+.turn b.X{color:var(--accent)}.turn b.O{color:var(--accent2)}
+.mgmsg{min-height:20px;font-size:13px;margin:8px 0}.mgmsg.bad{color:var(--bad)}.mgmsg.good{color:var(--good)}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.sugg button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:6px 10px;font:600 12px var(--body);cursor:pointer}`;
+const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+const box=document.createElement('div');box.id='mgbox';document.body.appendChild(box);
+const show=h=>{box.innerHTML=`<div class="mgw">${h}</div>`;box.scrollTop=0;};
+const top=(t,back)=>`<div class="mgtop">${back?`<button class="mgback" onclick="${back}" aria-label="Back">‹</button>`:''}<h2>${t}</h2></div>`;
+
+window.openGames=function(){box.style.display='block';document.body.style.overflow='hidden';try{NAVON='play';renderNav();}catch(e){}hub();};
+window.closeGames=function(){box.style.display='none';document.body.style.overflow='';};
+function hub(){show(top('🎮 Minigames')+`<div class="hint" style="margin:-6px 0 14px">Free to play. No money involved.</div><div class="mghub">
+ <button class="mgcard" onclick="MG.career()"><span class="ic">⚽</span><span><b>Career Simulator</b><span>Pick your country, position and first club, then make the big decisions and build a legendary career, season by season.</span></span></button>
+ <button class="mgcard" onclick="MG.ttt()"><span class="ic">❌⭕</span><span><b>Footy Tic Tac Toe</b><span>Name a player who fits both the row and the column (club or country) to claim the square. Play a friend or the computer.</span></span></button></div>`);}
+
+/* ================= CAREER SIMULATOR ================= */
+let C=null;
+const POS={FW:['Striker',.52,.18],W:['Winger',.32,.26],MF:['Midfielder',.14,.24],DF:['Defender',.04,.06],GK:['Goalkeeper',0,.005]};
+const SMALL=[['Racing Club',66,'ar'],['Boca Juniors',72,'ar'],['River Plate',73,'ar'],['Flamengo',73,'br'],['Santos',66,'br'],['Benfica',76,'pt'],['Porto',76,'pt'],['Ajax',75,'nl'],['PSV',74,'nl'],['Sevilla',75,'es'],['Villarreal',76,'es'],['Real Sociedad',75,'es'],['Lyon',73,'fr'],['Monaco',76,'fr'],['Marseille',75,'fr'],['Leverkusen',80,'de'],['RB Leipzig',78,'de'],['Napoli',80,'it'],['Roma',77,'it'],['Atalanta',78,'it'],['Lazio',76,'it'],['Aston Villa',78,'gb-eng'],['Newcastle',79,'gb-eng'],['Brighton',76,'gb-eng'],['West Ham',73,'gb-eng'],['Club América',68,'mx'],['Comunicaciones',58,'gt'],['Municipal',58,'gt'],['LA Galaxy',64,'us'],['Inter Miami',66,'us'],['Celtic',72,'gb-sct'],['Galatasaray',74,'tr'],['Al-Hilal',72,'sa']];
+const ALLCLUBS=[...Object.entries(CLUB).map(([k,[n,s]])=>({n,s,logo:clubLogo(k),big:1})),...SMALL.map(([n,s,f])=>({n,s,flag:f}))];
+const cimg=c=>c.logo?`<img src="${c.logo}" alt="">`:`<img src="https://flagcdn.com/w80/${c.flag}.png" alt="" style="width:30px;height:20px;object-fit:cover;border-radius:3px">`;
+MG={};window.MG=MG;
+MG.career=function(){C={step:'setup',nat:'ARG',pos:'FW',mode:2,name:''};careerSetup();};
+function careerSetup(){show(top('Career Simulator',"MG.hub()")+`<div class="card">
+ <div class="mglab">Player name</div><input class="mginput" id="cname" maxlength="24" placeholder="Your player's name" value="${C.name||''}">
+ <div class="mglab" style="margin-top:12px">Country</div><div class="mgopts">${Object.entries(NAT).map(([k,[n]])=>`<button class="mgopt${C.nat===k?' on':''}" onclick="MG.set('nat','${k}')"><img src="${flag(k)}" alt="">${n}</button>`).join('')}</div>
+ <div class="mglab">Position</div><div class="mgopts">${Object.entries(POS).map(([k,[n]])=>`<button class="mgopt${C.pos===k?' on':''}" onclick="MG.set('pos','${k}')">${n}</button>`).join('')}</div>
+ <div class="mglab">Pace</div><div class="mgopts">${[[1,'Intense','A decision every season'],[2,'Normal','Every 2 seasons'],[3,'Express','Every 3 seasons']].map(([v,n,d])=>`<button class="mgopt${C.mode===v?' on':''}" onclick="MG.set('mode',${v})"><span><b>${n}</b><br><small style="color:var(--mut)">${d}</small></span></button>`).join('')}</div>
+ <button class="mgbtn" style="width:100%;margin-top:6px" onclick="MG.begin()">Start career</button></div>`);}
+MG.hub=hub;
+MG.set=(k,v)=>{const n=$g('cname');if(n)C.name=n.value;C[k]=v;careerSetup();};
+MG.begin=function(){const n=$g('cname');C.name=(n&&n.value.trim())||'Your Player';
+ Object.assign(C,{age:17,ovr:ri(58,65),pot:ri(76,95),seasons:[],trophies:{League:0,Cup:0,'Champions League':0,'World Cup':0,'Copa/Euro':0,"Ballon d'Or":0},caps:0,intlGoals:0,goals:0,assists:0,apps:0,club:null,sinceDec:0,focus:'balanced',retired:false,events:[]});
+ const academy=[pick(SMALL.filter(c=>c[1]<70)),pick(SMALL.filter(c=>c[1]>=70&&c[1]<77)),pick(SMALL.filter(c=>c[1]>=77))].map(([n,s,f])=>({n,s,flag:f}));
+ decision('Your first contract',`You’re 17. Three academies want ${C.name}. Bigger clubs mean tougher competition for minutes.`,academy.map(c=>({c,t:`${c.n}`,d:`Club level ${c.s} · ${c.s<70?'You’ll play a lot':c.s<77?'Some first-team minutes':'Hard to get minutes'}`})));};
+function decision(title,text,opts){C.opts=opts;show(top('Career Simulator')+careerHead()+`<div class="card" style="margin-top:12px"><div class="mglab">Decision</div><h3 style="margin:4px 0 6px;font:800 20px var(--display);text-transform:uppercase">${title}</h3><div class="hint" style="margin:0">${text}</div>
+ <div class="dchoice">${opts.map((o,i)=>`<button onclick="MG.choose(${i})">${o.c?cimg(o.c):`<span style="font-size:26px">${o.ic||'•'}</span>`}<span><b>${o.t}</b><small>${o.d||''}</small></span></button>`).join('')}</div></div>${careerLog()}`);}
+function careerHead(){const nat=NAT[C.nat];return `<div class="card" style="display:flex;gap:14px;align-items:center"><span class="ovr">${C.ovr}</span><div style="flex:1"><b style="font:800 20px var(--display);text-transform:uppercase">${C.name}</b><div class="hint" style="margin:0"><img src="${flag(C.nat)}" style="width:18px;height:12px;border-radius:2px;vertical-align:middle"> ${nat[0]} · ${POS[C.pos][0]} · Age ${C.age}${C.club?` · ${C.club.n}`:''}</div></div></div>
+ <div class="cstat"><div><b>${C.apps}</b><span>Apps</span></div><div><b>${C.pos==='GK'?C.cs||0:C.goals}</b><span>${C.pos==='GK'?'Clean sheets':'Goals'}</span></div><div><b>${C.assists}</b><span>Assists</span></div><div><b>${Object.values(C.trophies).reduce((a,b)=>a+b,0)}</b><span>Trophies</span></div></div>`;}
+function careerLog(){if(!C.seasons.length)return '';return `<div class="card" style="margin-top:12px"><div class="mglab">Career so far</div><div class="clog">${C.seasons.slice().reverse().map(s=>`<div><span class="yr">${s.yr}</span>${cimg(s.club)}<span><b>${s.club.n}</b><br><small style="color:var(--mut)">OVR ${s.ovr} · ${s.apps} apps · ${C.pos==='GK'?s.cs+' CS':s.g+' G'} · ${s.a} A · ${s.rt.toFixed(1)} rating</small></span><span class="tr">${s.tr.map(t=>({League:'🏆',Cup:'🥈','Champions League':'⭐','World Cup':'🌍','Copa/Euro':'🏅',"Ballon d'Or":'🟡'}[t]||'')).join('')}</span></div>`).join('')}</div></div>`;}
+MG.choose=function(i){const o=C.opts[i];if(o.fn)o.fn();else if(o.c){if(C.club&&C.club.n!==o.c.n)C.events.push(`${C.age}: moved to ${o.c.n}`);C.club=o.c;}playSeasons();};
+function playSeasons(){let n=C.mode;while(n-->0&&!C.retired){season();if(C.retired)break;}
+ if(C.retired)return careerEnd();
+ if(C.age>=33&&Math.random()<(C.age-32)*.22)return decision('Time to think about retirement?',`You’re ${C.age}. Your body is feeling the miles.`,[{ic:'👋',t:'Retire now',d:'End your career on your terms',fn:()=>{C.retired=true;careerEnd();throw 'stop';}},{ic:'💪',t:'One more run',d:'Keep playing at '+C.club.n},...offers(2,true)]);
+ nextDecision();}
+function offers(k,late){const lvl=C.ovr;const pool=ALLCLUBS.filter(c=>c.n!==C.club.n&&Math.abs(c.s-(lvl+ri(-4,6)))<9);const out=[];const used=new Set();
+ while(out.length<k&&pool.length){const c=pick(pool);if(used.has(c.n))continue;used.add(c.n);out.push(c);if(used.size>=pool.length)break;}
+ return out.map(c=>({c,t:`Transfer to ${c.n}`,d:`Club level ${c.s} · ${c.s>C.club.s+2?'Bigger stage, more competition':c.s<C.club.s-2?'Guaranteed starter':'Similar level'}${late?'':' · €'+Math.max(1,Math.round((C.ovr-55)**2/12))+'M fee'}`}));}
+function nextDecision(){const r=Math.random();
+ if(r<.18)return decision('Training focus','Your coach asks what to work on this season.',[{ic:'⚡',t:'Physical',d:'Faster growth when young, protects you from injuries',fn:()=>C.focus='physical'},{ic:'🎯',t:'Technical',d:C.pos==='GK'?'Better reflexes and distribution':'More goals and assists',fn:()=>C.focus='technical'},{ic:'🧠',t:'Leadership',d:'Captaincy and consistency, better ratings',fn:()=>C.focus='leader'}]);
+ const stay={ic:'🏠',t:`Stay at ${C.club.n}`,d:`Club level ${C.club.s} · keep building`};
+ if(r<.3&&C.age<23&&C.club.s>C.ovr+6)return decision('Loan offer','You’re not playing enough. A smaller club wants you on loan for a season.',[{ic:'🔁',t:'Go on loan',d:'Lots of minutes, faster growth',fn:()=>{C.loan=C.club;C.club=pick(ALLCLUBS.filter(c=>c.s<C.club.s-6&&c.s>60))||C.club;C.loanLeft=1;}},stay]);
+ decision('Transfer window',`${C.club.n} wants you to stay, but other clubs are calling.`,[stay,...offers(3)]);}
+function season(){const c=C.club,yr=2026+C.seasons.length;
+ // growth
+ const age=C.age,room=C.pot-C.ovr;let d=age<21?rnd(1.5,5):age<25?rnd(.5,3.5):age<29?rnd(-.5,1.5):age<32?rnd(-2,.5):rnd(-4,-.5);
+ if(age<29)d*=clamp(room/12,.15,1.3);
+ const playShare=clamp(.55+(C.ovr-c.s)*.05+rnd(-.12,.12),.08,.97);if(playShare>.6&&age<24)d+=.8;if(C.focus==='physical'&&age<25)d+=.6;
+ let inj=Math.random()<(C.focus==='physical'?.06:.11)+(age>31?.06:0);const injWeeks=inj?ri(4,26):0;
+ C.ovr=clamp(Math.round(C.ovr+d),45,99);
+ const apps=Math.max(0,Math.round(46*playShare*(1-injWeeks/40)));
+ const [_,gpg,apg]=POS[C.pos],q=(C.ovr-60)/30,teamQ=(c.s-70)/20;let g=0,a=0,cs=0;
+ for(let i=0;i<apps;i++){g+=Math.random()<gpg*(.6+q*.9+teamQ*.3)*(C.focus==='technical'?1.12:1)?1:0;if(Math.random()<gpg*.12*q)g++;a+=Math.random()<apg*(.6+q*.8+teamQ*.3)?1:0;if(C.pos==='GK'||C.pos==='DF')cs+=Math.random()<.25+teamQ*.25?1:0;}
+ const rt=clamp(6.2+q*1.4+rnd(-.35,.35)+(C.focus==='leader'?.15:0),5.5,9.6);
+ // trophies
+ const tr=[];const strength=c.s+(C.ovr-c.s)*.08*playShare;
+ if(Math.random()<clamp((strength-74)/22,.02,.62))tr.push('League');
+ if(Math.random()<clamp((strength-66)/40,.04,.38))tr.push('Cup');
+ if(c.s>=79&&Math.random()<clamp((strength-80)/50,.01,.2))tr.push('Champions League');
+ // national team
+ let caps=0;if(C.ovr>=74){caps=ri(4,10);C.caps+=caps;C.intlGoals+=Math.round(caps*gpg*.8*(.6+q));
+  const strongNat=['ARG','BRA','FRA','ESP','ENG','GER','POR','NED','ITA','BEL'].includes(C.nat);
+  if(yr%4===2&&Math.random()<(strongNat?.16:.03)*(1+q))tr.push('World Cup');
+  if((yr%4===0)&&Math.random()<(strongNat?.2:.06)*(1+q))tr.push('Copa/Euro');}
+ if(C.ovr>=89&&C.pos!=='GK'&&(g+a)>=30+(C.pos==='DF'?-18:0)&&Math.random()<.18+(tr.includes('Champions League')||tr.includes('World Cup')?.3:0))tr.push("Ballon d'Or");
+ tr.forEach(t=>C.trophies[t]++);
+ C.apps+=apps;C.goals+=g;C.assists+=a;C.cs=(C.cs||0)+cs;
+ C.seasons.push({yr:`${yr}/${String(yr+1).slice(2)}`,club:c,ovr:C.ovr,apps,g,a,cs,rt,tr,inj:injWeeks});
+ if(injWeeks>12)C.events.push(`${age}: serious injury, out ${injWeeks} weeks`);
+ if(C.loanLeft){C.loanLeft--;if(!C.loanLeft){C.club=C.loan;C.loan=null;}}
+ C.age++;if(C.age>=39||(C.age>=36&&C.ovr<68&&Math.random()<.5))C.retired=true;}
+function careerEnd(){const T=C.trophies,tt=Object.values(T).reduce((a,b)=>a+b,0),peak=Math.max(...C.seasons.map(s=>s.ovr)),clubs=[...new Set(C.seasons.map(s=>s.club.n))];
+ const score=peak*1.4+T.League*4+T['Champions League']*9+T['World Cup']*14+T['Copa/Euro']*8+T["Ballon d'Or"]*16+T.Cup*1.5+(C.pos==='GK'?(C.cs||0)/12:(C.goals+C.assists)/14);
+ const title=score>260?'All-time great 🐐':score>200?'Club legend 👑':score>160?'World-class star ⭐':score>130?'Solid pro 💼':clubs.length>=6?'Journeyman 🧳':'Cult hero 🙌';
+ show(top('Career over')+careerHead()+`<div class="card" style="margin-top:12px;text-align:center"><div class="mglab">Legacy</div><div style="font:800 34px var(--display);text-transform:uppercase;margin:6px 0">${title}</div>
+ <div class="hint" style="margin:0">Peak OVR ${peak} · ${C.seasons.length} seasons · ${clubs.length} club${clubs.length>1?'s':''} · ${C.caps} caps, ${C.intlGoals} international goals</div>
+ <div class="cstat" style="grid-template-columns:repeat(3,1fr)">${Object.entries(T).map(([k,v])=>`<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+ <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="mgbtn" onclick="MG.career()">New career</button><button class="mgbtn alt" onclick="MG.hub()">Minigames</button></div></div>${careerLog()}`);}
+// patch: let "retire now" exit cleanly
+const _choose=MG.choose;MG.choose=function(i){try{_choose(i);}catch(e){if(e!=='stop')throw e;}};
+
+/* ================= FOOTY TIC TAC TOE ================= */
+let T=null;
+const CRIT_CLUBS=Object.keys(CLUB),CRIT_NATS=['ARG','BRA','FRA','ESP','ENG','POR','GER','NED','ITA','BEL'];
+const fits=(p,c)=>c.t==='club'?p.cl.includes(c.k):p.c===c.k;
+const answers=(r,c)=>PLAYERS.filter(p=>fits(p,r)&&fits(p,c));
+function makeGrid(){for(let tries=0;tries<4000;tries++){
+  const natRows=Math.random()<.6?ri(1,2):0;const rows=[],cols=[];const cl=CRIT_CLUBS.slice().sort(()=>Math.random()-.5),na=CRIT_NATS.slice().sort(()=>Math.random()-.5);
+  for(let i=0;i<3;i++)rows.push(i<natRows?{t:'nat',k:na[i]}:{t:'club',k:cl.pop()});for(let i=0;i<3;i++)cols.push({t:'club',k:cl.pop()});
+  rows.sort(()=>Math.random()-.5);let ok=true;for(const r of rows)for(const c of cols)if(answers(r,c).length<2){ok=false;break;}
+  if(ok)return {rows,cols};}return null;}
+MG.ttt=function(){show(top('Footy Tic Tac Toe',"MG.hub()")+`<div class="card"><div class="hint" style="margin:0 0 10px">Each square needs a player who played for <b>both</b> the row and the column (club or country). Get 3 in a row to win. A wrong answer loses your turn.</div>
+ <div class="mglab">Mode</div><div class="dchoice"><button onclick="MG.tttStart('cpu')"><span style="font-size:26px">🤖</span><span><b>Vs computer</b><small>You are ❌, the computer is ⭕</small></span></button><button onclick="MG.tttStart('pvp')"><span style="font-size:26px">👥</span><span><b>Vs a friend</b><small>Pass the phone between turns</small></span></button></div></div>`);};
+MG.tttStart=function(mode){const g=makeGrid();T={mode,...g,board:Array(9).fill(null),used:new Set(),turn:'X',sel:null,msg:'',win:null};tttDraw();};
+function hdHTML(c){return c.t==='club'?`<img src="${clubLogo(c.k)}" alt="">${CLUB[c.k][0]}`:`<img class="fl" src="${flag(c.k)}" alt="">${NAT[c.k][0]}`;}
+function tttDraw(){const W=T.win;
+ const cells=[];for(let r=0;r<3;r++){cells.push(`<div class="hd">${hdHTML(T.rows[r])}</div>`);for(let c=0;c<3;c++){const i=r*3+c,b=T.board[i];cells.push(`<button class="cell ${b?b.m:''}${T.sel===i?' sel':''}${W&&W.line.includes(i)?' win':''}" onclick="MG.tttSel(${i})" ${b||W?'disabled':''}>${b?`<span class="mk">${b.m==='X'?'✕':'◯'}</span><small>${b.p}</small>`:'<small style="font-size:18px;color:var(--line2)">+</small>'}</button>`);}}
+ const who=T.turn==='X'?(T.mode==='cpu'?'You (✕)':'Player ✕'):(T.mode==='cpu'?'Computer (◯)':'Player ◯');
+ const selTxt=T.sel!=null?`${T.rows[Math.floor(T.sel/3)].t==='club'?CLUB[T.rows[Math.floor(T.sel/3)].k][0]:NAT[T.rows[Math.floor(T.sel/3)].k][0]} × ${CLUB[T.cols[T.sel%3].k][0]}`:'';
+ show(top('Footy Tic Tac Toe',"MG.ttt()")+`<div class="turn">${W?`<b class="${W.m||''}">${W.m?(T.mode==='cpu'?(W.m==='X'?'You win! 🎉':'Computer wins 🤖'):`Player ${W.m==='X'?'✕':'◯'} wins! 🎉`):'Draw 🤝'}</b>`:`<span>Turn: <b class="${T.turn}">${who}</b></span>`}<button class="mgbtn alt" style="padding:7px 12px" onclick="MG.tttStart('${T.mode}')">New grid</button></div>
+ <div class="ttt"><div></div>${T.cols.map(c=>`<div class="hd">${hdHTML(c)}</div>`).join('')}${cells.join('')}</div>
+ ${W?`<div class="card"><div class="mglab">Possible answers you missed</div><div class="hint">${T.board.map((b,i)=>b?'':`<div>• ${CLUB[T.cols[i%3].k][0]} × ${T.rows[Math.floor(i/3)].t==='club'?CLUB[T.rows[Math.floor(i/3)].k][0]:NAT[T.rows[Math.floor(i/3)].k][0]}: ${answers(T.rows[Math.floor(i/3)],T.cols[i%3]).slice(0,3).map(p=>p.n).join(', ')}</div>`).join('')||'All squares were claimed.'}</div></div>`:
+ `<div class="card">${T.sel==null?'<div class="hint" style="margin:0">Tap an empty square to choose it.</div>':`<div class="mglab">${selTxt}</div><input class="mginput" id="tttq" placeholder="Type a player name…" autocomplete="off" oninput="MG.tttSug()" onkeydown="if(event.key==='Enter')MG.tttGo()"><div class="sugg" id="tttsug"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="mgbtn" onclick="MG.tttGo()">Submit</button><button class="mgbtn alt" onclick="MG.tttSkip()">Skip turn</button></div>`}<div class="mgmsg ${T.msgc||''}">${T.msg||''}</div></div>`}`);
+ const q=$g('tttq');if(q)q.focus();}
+MG.tttSel=function(i){if(T.win||T.board[i]||(T.mode==='cpu'&&T.turn==='O'))return;T.sel=i;T.msg='';tttDraw();};
+MG.tttSug=function(){const v=norm(($g('tttq')||{}).value);const el=$g('tttsug');if(!el)return;if(v.length<2){el.innerHTML='';return;}
+ const m=PLAYERS.filter(p=>p.k.includes(v)).slice(0,6);el.innerHTML=m.map(p=>`<button onclick="document.getElementById('tttq').value='${p.n.replace(/'/g,"\\'")}';MG.tttGo()">${p.n}</button>`).join('');};
+MG.tttSkip=function(){T.msg=`${T.turn==='X'?'✕':'◯'} skipped.`;T.msgc='';T.sel=null;nextTurn();};
+MG.tttGo=function(){const v=($g('tttq')||{}).value;if(T.sel==null||!v)return;const p=findPlayer(v);const r=T.rows[Math.floor(T.sel/3)],c=T.cols[T.sel%3];
+ if(!p){T.msg=`“${v}” isn’t in the player list. Lost turn.`;T.msgc='bad';T.sel=null;return nextTurn();}
+ if(T.used.has(p.n)){T.msg=`${p.n} was already used. Lost turn.`;T.msgc='bad';T.sel=null;return nextTurn();}
+ if(!(fits(p,r)&&fits(p,c))){T.msg=`✗ ${p.n} doesn’t fit both. Lost turn.`;T.msgc='bad';T.sel=null;return nextTurn();}
+ T.board[T.sel]={m:T.turn,p:p.n};T.used.add(p.n);T.msg=`✓ ${p.n}!`;T.msgc='good';T.sel=null;nextTurn();};
+const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function checkWin(){for(const l of LINES){const [a,b,c]=l.map(i=>T.board[i]&&T.board[i].m);if(a&&a===b&&b===c)return {m:a,line:l};}if(T.board.every(Boolean))return {m:null,line:[]};
+ // draw if no remaining cell has an unused answer
+ if(T.board.every((b,i)=>b||answers(T.rows[Math.floor(i/3)],T.cols[i%3]).every(p=>T.used.has(p.n))))return {m:null,line:[]};return null;}
+function nextTurn(){T.win=checkWin();if(!T.win){T.turn=T.turn==='X'?'O':'X';}tttDraw();if(!T.win&&T.mode==='cpu'&&T.turn==='O')setTimeout(cpuMove,900);}
+function cpuMove(){if(!T||T.win)return;const free=T.board.map((b,i)=>b?null:i).filter(i=>i!=null);
+ const score=i=>{let s=0;for(const l of LINES)if(l.includes(i)){const ms=l.map(j=>T.board[j]&&T.board[j].m);if(ms.filter(m=>m==='O').length===2&&!ms.includes('X'))s+=100;if(ms.filter(m=>m==='X').length===2&&!ms.includes('O'))s+=50;s+=ms.filter(m=>m==='O').length*3;}return s+(i===4?4:0)+Math.random()*2;};
+ const i=free.sort((a,b)=>score(b)-score(a))[0];const opts=answers(T.rows[Math.floor(i/3)],T.cols[i%3]).filter(p=>!T.used.has(p.n));
+ if(!opts.length||Math.random()<.18){T.msg='🤖 The computer couldn’t think of anyone and passed.';T.msgc='';return nextTurn();}
+ const p=pick(opts);T.board[i]={m:'O',p:p.n};T.used.add(p.n);T.msg=`🤖 Computer played ${p.n}.`;T.msgc='';nextTurn();}
+})();
+
 </script>
 </body>
 </html>
