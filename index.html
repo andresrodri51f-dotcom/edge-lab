@@ -1605,7 +1605,7 @@ function hlHTML(g,sum){const [lg,st,a,h]=g,X=g[10]||{};
 function playHL(i,btn){const v=(window._HL||[])[i];if(!v)return;const el=$('hlv');if(!el)return;if(v.mp4){el.poster=v.th;el.src=v.mp4;el.play().catch(()=>{});}else window.open(v.web,'_blank');$('hlt').textContent=v.t;document.querySelectorAll('.hlth').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');el.scrollIntoView({block:'center',behavior:'smooth'});}
 
 /* ---------- free game info (venue, referee, form, top performers, injuries) + Pro paywall ---------- */
-const PRO_HASH='342de20d7e29e80fd597cf9399965831dd95f12829055a0ece1aeb7b41887efe',PRO_PRICE='$25/month',PRO_SKU='edge_pro_monthly';
+const PRO_HASH='342de20d7e29e80fd597cf9399965831dd95f12829055a0ece1aeb7b41887efe',PRO_HASH2='39e9930d31d085af7c5b56c9da2844016555073b58d6ea8059604938f5e3db65',PRO_PRICE='$25/month',PRO_SKU='edge_pro_monthly';
 function isPro(){try{if(window.EdgeStore&&EdgeStore.active)return true;return localStorage.getItem('el_pro')==='1';}catch(e){return !!window._pro;}}
 async function buyPro(){
  if(window.EdgeStore&&EdgeStore.purchase){try{const ok=await EdgeStore.purchase(PRO_SKU);if(ok){EdgeStore.active=true;reopen();}}catch(e){}return;}
@@ -1613,7 +1613,7 @@ async function buyPro(){
 }
 async function tryCode(){const v=(($('procode')||{}).value||'').trim().toUpperCase();if(!v)return;
  const h=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))].map(b=>b.toString(16).padStart(2,'0')).join('');
- if(h===PRO_HASH){try{localStorage.setItem('el_pro','1');}catch(e){}window._pro=1;reopen();}else{const m=$('paynote');if(m)m.textContent='That code isn’t valid.';}}
+ if(h===PRO_HASH||h===PRO_HASH2){try{localStorage.setItem('el_pro','1');}catch(e){}window._pro=1;reopen();}else{const m=$('paynote');if(m)m.textContent='That code isn’t valid.';}}
 function reopen(){renderNav();if($('probox')&&$('probox').style.display==='block'&&!(MATCH&&MATCH.g))return openPro();if(MATCH&&MATCH.g)openKey(encodeURIComponent(gameKey(MATCH.g)));}
 function lockHTML(g){const [lg,st,a,h]=g,ufc=lg==='UFC';
  const fake=['Winner','Over/Under','Most likely score','Spread','Top player prop','Anytime scorer'].map(l=>`<div class="prow"><span>${l}</span><b>${ufc?'Decision':'██████'} <span class="hint" style="margin:0">64%</span></b></div>`).join('');
