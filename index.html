@@ -133,9 +133,7 @@ tr:last-child td{border-bottom:0}
   </div>
   <div class="settings">
     <span class="feed" id="feed"><i></i><span id="feedtxt">Snapshot</span></span>
-    <label for="rate">Scores every
-      <select id="rate" onchange="schedule();setFeed(FEED_ON,FEED_ON?'Live · every '+(rate()/1000)+'s':'Snapshot');if(LIVE&&LIVE.timer){clearInterval(LIVE.timer);LIVE.timer=setInterval(refreshLive,Math.max(3000,rate()));}"><option value="1000" selected>1 sec</option><option value="5000">5 sec</option><option value="15000">15 sec</option><option value="30000">30 sec</option></select>
-    </label>
+    
     <label for="nsims">Simulations
       <select id="nsims"><option value="10000">10,000</option><option value="20000">20,000</option><option value="50000" selected>50,000</option><option value="100000">100,000</option></select>
     </label>
@@ -625,7 +623,7 @@ function gameCard(g,idx){
  if(pr){const pa=pr[0],ph=pr[1],pd=pr[2]||0;
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
   prob=`<div class="pbar">${segs.map(s=>`<div style="width:${s[1]}%;background:${s[2]}"></div>`).join('')}</div><div class="plab">${segs.map(s=>`<span>${s[0]==='Draw'?'Draw':abbrOf(s[0])} ${(+s[1]).toFixed(0)}%</span>`).join('')}</div>`;}
- const line=(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
+ const line=X.det?`<div class="gline">Line: ${X.det}${X.total!=null?` · O/U ${X.total}`:''}</div>`:(X.spread!=null||X.total!=null)?`<div class="gline">Line: ${X.spread!=null?`${X.ha||abbrOf(h)} ${X.spread>0?'+':''}${X.spread}`:''}${X.total!=null?` · O/U ${X.total}`:''}</div>`:'';
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl'}[lg]||'soccer');
  return `<div class="card gcard ${st}">
   <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
@@ -638,18 +636,33 @@ function renderGames(){
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
  const sports=['All','NBA','NFL','Soccer'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
  const f=L.filter(g=>(gSport==='All'||(gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport))&&(gStat==='All'||g[1]===gStat));
- const order={live:0,up:1,final:2};f.sort((p,q)=>order[p[1]]-order[q[1]]);
+ const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  $('p-games').innerHTML=`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">6</div><div class="s">NBA · NFL · UCL · EPL · La Liga · MLS</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
- <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second (other leagues every minute) from ESPN’s free scoreboard.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} <b style="color:var(--ink)">Live sim</b> (NBA/NFL) re-simulates the rest of a game from the current score so you can check live odds.</div>
+ <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} <b style="color:var(--ink)">Live sim</b> (NBA/NFL) re-simulates the rest of a game from the current score so you can check live odds.</div>
  <div class="ggrid">${f.map(g=>gameCard(g,L.indexOf(g))).join('')||'<div class="hint">No games match this filter.</div>'}</div>`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
 const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1']];
 function setFeed(on,txt){const el=$('feed');if(!el)return;el.classList.toggle('on',on);$('feedtxt').textContent=txt;}
 const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=1000;
-function rate(){const el=$('rate');return el?+el.value:1000;}
+function rate(){return 1000;}
+const SOCD={};
+function ymd(d){return d.toISOString().slice(0,10).replace(/-/g,'');}
+async function getJSON(u){try{const r=await fetch(u,{cache:'no-store'});return r.ok?await r.json():null;}catch(e){return null;}}
+async function fetchSoccer(lg,p,full){
+ const S=SOCD[lg]||(SOCD[lg]={cal:[],days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
+ const cur=await getJSON(base);
+ if(cur){S.cur=cur;const c=cur.leagues&&cur.leagues[0]&&cur.leagues[0].calendar;if(Array.isArray(c)&&c.length&&typeof c[0]==='string')S.cal=c;}
+ if(full){const now=Date.now(),lo=now-7*864e5,hi=now+15*864e5,today=ymd(new Date());
+  let want=S.cal.map(x=>new Date(x)).filter(d=>d>=lo&&d<=hi).map(ymd);
+  if(!S.cal.length){want=[];for(let t=lo;t<=hi;t+=864e5)want.push(ymd(new Date(t)));}
+  await Promise.all(want.map(async k=>{const old=S.days[k];if(old&&(k<today||now-old.t<6e5))return;const d=await getJSON(base+'?dates='+k);if(d)S.days[k]={t:now,events:d.events||[]};}));}
+ const m=new Map();for(const k of Object.keys(S.days).sort())for(const e of S.days[k].events)m.set(e.id,e);
+ if(S.cur)for(const e of S.cur.events||[])m.set(e.id,e);
+ if(m.size||cur)FCACHE[lg]={events:[...m.values()]};
+}
 async function fetchLeague(lg,p){try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d&&d.events)FCACHE[lg]=d;}catch(e){}}
 function buildList(){
  const list=[];
@@ -658,13 +671,16 @@ function buildList(){
    const H=c.competitors.find(t=>t.homeAway==='home'),A=c.competitors.find(t=>t.homeAway==='away');if(!H||!A)continue;
    const s=e.status&&e.status.type?e.status.type.state:'pre',st=s==='in'?'live':s==='post'?'final':'up';
    const a=A.team.shortDisplayName||A.team.displayName,h=H.team.shortDisplayName||H.team.displayName;
-   const o=(c.odds||[]).find(z=>z&&z.details);let spread=null,total=null;
-   if(o){total=o.overUnder!=null?+o.overUnder:null;const m=String(o.details).match(/^([A-Z]+)\s+([-+]?\d+(?:\.\d+)?)$/);if(m){const v=+m[2];spread=m[1]===H.team.abbreviation?v:-v;}else if(/EVEN|PK/i.test(o.details))spread=0;}
-   const info=st==='up'?new Date(e.date).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):(e.status.type.shortDetail||'');
-   let pr=0;if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}
+   const soc=SOCCER.includes(lg),o=(c.odds||[]).find(z=>z&&(z.details||z.moneyline));let spread=null,total=null,det=null,p3=null;
+   if(o){total=o.overUnder!=null?+o.overUnder:null;
+    if(soc){det=o.details||null;const ml=o.moneyline,od=k=>ml&&ml[k]&&(ml[k].close||ml[k].open)&&+(ml[k].close||ml[k].open).odds;const iH=impl(od('home')),iA=impl(od('away')),iD=impl(od('draw'));if(iH&&iA&&iD){const t=iH+iA+iD;p3=[iA/t*100,iH/t*100,iD/t*100];}}
+    else if(o.details){const m=String(o.details).match(/^([A-Z]+)\s+([-+]?\d+(?:\.\d+)?)$/);if(m){const v=+m[2];spread=m[1]===H.team.abbreviation?v:-v;}else if(/EVEN|PK/i.test(o.details))spread=0;}}
+   const dstr=new Date(e.date).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+   const info=st==='up'?dstr:st==='final'&&SOCCER.includes(lg)?(e.status.type.shortDetail||'FT')+' · '+new Date(e.date).toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}):(e.status.type.shortDetail||'');
+   let pr=0;if(st==='up'&&spread!=null&&C){const ph=ncdf(-spread/C.sd)*100;pr=[100-ph,ph];}if(st==='up'&&p3)pr=p3;
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:p,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+    {id:e.id,path:p,date:e.date,det,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
  return list;
 }
 async function pullFeed(){
@@ -672,7 +688,7 @@ async function pullFeed(){
  const now=Date.now(),full=now-lastFull>60000||!Object.keys(FCACHE).length;
  const liveLg=new Set(GAMES.list.filter(g=>g[1]==='live').map(g=>g[0]));
  const todo=FEEDS.filter(([lg])=>full||liveLg.has(lg));
- await Promise.all(todo.map(([lg,p])=>fetchLeague(lg,p)));
+ await Promise.all(todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchLeague(lg,p)));
  if(full&&Object.keys(FCACHE).length)lastFull=now;
  busy=false;
  if(!Object.keys(FCACHE).length){setFeed(false,'Snapshot');return false;}
