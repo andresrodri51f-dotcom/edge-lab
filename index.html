@@ -167,16 +167,7 @@ table.mt td{vertical-align:middle}
   </div>
 </header>
 
-<nav class="tabs" id="tabs">
-  <button class="tab" data-t="today">Today</button>
-  <button class="tab" data-t="games">Games</button>
-  <button class="tab" data-t="next">Next matches</button>
-  <button class="tab" data-t="nba">NBA</button>
-  <button class="tab" data-t="nfl">NFL</button>
-  <button class="tab" data-t="mlb">MLB</button>
-  <button class="tab" data-t="props">Player Props</button>
-  <button class="tab" data-t="how">How it works</button>
-</nav>
+
 
 <section class="panel" id="p-today"></section>
 <section class="panel" id="p-games"></section>
@@ -571,7 +562,7 @@ function invnorm(p){p=clamp(p,1e-6,1-1e-6);const a=[-39.6968302866538,220.946098
  if(p<pl){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
  if(p>1-pl){q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
  q=p-.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
-const LCFG={NBA:{per:4,len:12,tot:229,sd:12.7,team:9,com:5,ot:.104,otsd:3.2},NFL:{per:4,len:15,tot:44.5,sd:13.5,team:9.5,com:3,ot:0}};
+const LCFG={EuroLeague:{per:4,len:10,tot:162,sd:11,team:8,com:4.5,ot:.125,otsd:3},NBA:{per:4,len:12,tot:229,sd:12.7,team:9,com:5,ot:.104,otsd:3.2},NFL:{per:4,len:15,tot:44.5,sd:13.5,team:9.5,com:3,ot:0}};
 let LIVE=null;
 function parseClock(info){const s=(info||'').toLowerCase();
  if(s.includes('half'))return [2,'0:00'];if(s.includes('end of q4'))return [4,'0:00'];
@@ -661,26 +652,28 @@ function gameCard(g,idx){
   ${note?`<div class="gpick">${note}</div>`:''}
   <div class="gfoot"><span class="gopen">${st==='final'?'See result':'Open simulations'} →</span><a href="${href}" onclick="event.stopPropagation()">Real ↗</a></div></div>`;
 }
-let gNext='All';
+let gNext='All',gView='games';
+function viewToggle(){const b=(v,l)=>`<button class="btn ${gView===v?'':'ghost'}" style="padding:9px 18px" onclick="gView='${v}';renderGames()">${l}</button>`;return `<div style="display:flex;gap:8px;margin-bottom:14px">${b('games','Games')}${b('next','Next matches')}</div>`;}
 function renderNext(){
  const L=GAMES.list,dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;
  const up=L.filter(g=>g[1]==='up'&&(gNext==='All'||(gNext==='Soccer'?SOCCER.includes(g[0]):g[0]===gNext))).sort((p,q)=>dt(p)-dt(q));
  const days=new Map();for(const g of up){const d=dt(g)?new Date(dt(g)).toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}):'Upcoming';if(!days.has(d))days.set(d,[]);days.get(d).push(g);}
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
- $('p-next').innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','Soccer'].map(s=>chip(gNext===s,s)).join('')}</div>
- <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${['All','NBA','NFL','EuroLeague','Soccer'].map(s=>chip(gNext===s,s)).join('')}</div>
+ <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} games</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
 function renderGames(){
+ if(gView==='next')return renderNext();
  const L=GAMES.list,cnt=k=>L.filter(g=>g[1]===k).length;
- const sports=['All','NBA','NFL','Soccer'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
+ const sports=['All','NBA','NFL','EuroLeague','Soccer'],stats=[['All','All'],['live','Live'],['final','Final'],['up','Upcoming']];
  const f=L.filter(g=>(gSport==='All'||(gSport==='Soccer'?SOCCER.includes(g[0]):g[0]===gSport))&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
- $('p-games').innerHTML=`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">6</div><div class="s">NBA · NFL · UCL · EPL · La Liga · MLS</div></div></div>
+ $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">7</div><div class="s">NBA · NFL · EuroLeague · UCL · EPL · La Liga · MLS</div></div></div>
  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
- ${f.length?['NBA','NFL','UCL','EPL','La Liga','MLS'].map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm={NBA:'NBA',NFL:'NFL',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'}[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
+ ${f.length?['NBA','NFL','EuroLeague','UCL','EPL','La Liga','MLS'].map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS'}[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
 const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1']];
@@ -719,6 +712,19 @@ function liveLine(lg,X,as,hs){
  let f;if(SOCCER.includes(lg)){const mi=soccerMinute(X,'');f=(90-mi)/90;const mean=Math.max(.8,tot-.3);const proj=(as||0)+(hs||0)+mean*f;return {L:Math.floor(proj)+.5,proj,f};}
  const C=LCFG[lg];if(!C)return null;const q=Math.min(C.per,X.period||1),[mm,ss]=fixClock(X.clock).split(':').map(Number),left=Math.max(0,(C.per-q)*C.len+(mm||0)+(ss||0)/60);f=left/(C.per*C.len);
  const proj=(as||0)+(hs||0)+tot*f;return {L:Math.floor(proj)+.5,proj,f,pre:tot};}
+let ELD=null,ELt=0;const TEAMR={};
+async function fetchEL(force){const now=Date.now(),live=GAMES.list.some(g=>g[0]==='EuroLeague'&&g[1]==='live');if(!force&&!(live&&now-ELt>10000))return;if(now-ELt<8000&&ELD)return;ELt=now;
+ const d=await getJSON('https://feeds.incrowdsports.com/provider/euroleague-feeds/v2/competitions/E/seasons/E2026/games?limit=500');if(!d||!d.data)return;ELD=d.data;
+ const agg={};for(const g of ELD){if(g.status!=='result')continue;for(const [s,o] of [[g.home,g.away],[g.away,g.home]]){const a=agg[s.code]||(agg[s.code]={pf:0,pa:0,n:0});a.pf+=s.score||0;a.pa+=o.score||0;a.n++;}}
+ for(const k in agg){const a=agg[k];TEAMR[k]={pf:a.pf/a.n,pa:a.pa/a.n,n:a.n};}}
+function elProj(hc,ac){const H=TEAMR[hc],A=TEAMR[ac],lg=81;const hp=H?H.pf:lg,ha=H?H.pa:lg,ap=A?A.pf:lg,aa=A?A.pa:lg;return [(ap+ha)/2-1.5,(hp+aa)/2+1.5];}
+function elList(){if(!ELD)return [];const now=Date.now(),lo=now-7*864e5,hi=now+15*864e5,out=[];
+ for(const g of ELD){const t=Date.parse(g.date);if(t<lo||t>hi)continue;const st=g.status==='result'?'final':g.status==='confirmed'||g.status==='postponed'?'up':'live';
+  const H=g.home,A=g.away,[mA,mH]=elProj(H.code,A.code);const info=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):st==='final'?'Final · '+new Date(t).toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}):`Q${g.quarter||1} ${g.remainingTime||''}`;
+  const ph=ncdf((mH-mA)/11)*100;
+  out.push(['EuroLeague',st,A.editorialName||A.name,H.editorialName||H.name,st==='up'?null:A.score,st==='up'?null:H.score,info,st==='up'?[100-ph,ph]:0,'',[mA,mH],
+   {id:'EL'+g.code,el:1,date:g.date,aa:A.tla,ha:H.tla,total:+(mA+mH).toFixed(1),period:g.quarter,clock:String(g.remainingTime||'0:00').replace(/^00:/,'').replace(/^0(\d:)/,'$1')}]);}
+ return out;}
 function buildList(){
  const list=[];
  for(const [lg,p] of FEEDS){const d=FCACHE[lg];if(!d)continue;const C=LCFG[lg];
@@ -737,14 +743,14 @@ function buildList(){
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
     {id:e.id,path:p,date:e.date,det,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
- return list;
+ return list.concat(elList());
 }
 async function pullFeed(){
  if(busy)return !!lastOk;busy=true;
  const now=Date.now(),full=now-lastFull>60000||!Object.keys(FCACHE).length;
  const liveLg=new Set(GAMES.list.filter(g=>g[1]==='live').map(g=>g[0]));
  const todo=FEEDS.filter(([lg])=>full||liveLg.has(lg));
- await Promise.all(todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full)));
+ await Promise.all([fetchEL(full),...todo.map(([lg,p])=>SOCCER.includes(lg)?fetchSoccer(lg,p,full):fetchAhead(lg,p,full))]);
  if(full&&Object.keys(FCACHE).length)lastFull=now;
  busy=false;
  if(!Object.keys(FCACHE).length){setFeed(false,'Snapshot');return false;}
@@ -752,7 +758,7 @@ async function pullFeed(){
  GAMES.asof='updated '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
  setFeed(true,'Live · every '+(rate()/1000)+'s');
  if($('p-games').classList.contains('on'))renderGames();
- if($('p-next').classList.contains('on'))renderNext();
+
  return true;
 }
 let feedTimer=null;
@@ -937,7 +943,7 @@ async function buildCtx(g,sum){
  }
  const C=LCFG[lg];
  let mA,mH;
- if(proj){[mA,mH]=proj;ctx.notes.push('Pregame projection from the Edge Lab model.');}
+ if(proj){[mA,mH]=proj;ctx.notes.push(lg==='EuroLeague'?'EuroLeague projection from each team’s points scored and allowed this season, plus home court (no betting lines or player data in the free feed).':'Pregame projection from the Edge Lab model.');}
  else if(spread!=null&&total){mA=(total+spread)/2;mH=(total-spread)/2;ctx.notes.push('Pregame projection from the DraftKings spread and total.');}
  else{const ph=pr?pr[1]/100:.55,m=C.sd*invnorm(ph);mA=(C.tot-m)/2;mH=(C.tot+m)/2;ctx.notes.push('Pregame projection estimated from the win-probability forecast.');}
  ctx.mA=mA;ctx.mH=mH;
@@ -980,8 +986,8 @@ async function buildCtx(g,sum){
 function runMatchSim(ctx){
  const n=NSIM,soc=SOCCER.includes(ctx.lg),A=new Int16Array(n),H=new Int16Array(n),KA=new Float32Array(n),KH=new Float32Array(n);
  if(soc){for(let i=0;i<n;i++){const ga=rpois(ctx.lamA*ctx.f),gh=rpois(ctx.lamH*ctx.f);A[i]=ctx.ca+ga;H[i]=ctx.ch+gh;KA[i]=ga;KH[i]=gh;}}
- else if(ctx.lg==='NBA'){const rf=Math.sqrt(Math.max(ctx.f,1e-4));
-  for(let i=0;i<n;i++){const c=5*rf*randn(),ra=Math.max(0,ctx.remA+c+9*rf*randn()),rh=Math.max(0,ctx.remH+c+9*rf*randn());let a=ctx.ca+Math.round(ra),h=ctx.ch+Math.round(rh);
+ else if(ctx.lg==='NBA'||ctx.lg==='EuroLeague'){const rf=Math.sqrt(Math.max(ctx.f,1e-4)),C0=LCFG[ctx.lg];
+  for(let i=0;i<n;i++){const c=C0.com*rf*randn(),ra=Math.max(0,ctx.remA+c+C0.team*rf*randn()),rh=Math.max(0,ctx.remH+c+C0.team*rf*randn());let a=ctx.ca+Math.round(ra),h=ctx.ch+Math.round(rh);
    while(a===h){a+=Math.max(0,Math.round(11+3.2*randn()));h+=Math.max(0,Math.round(11+3.2*randn()));}A[i]=a;H[i]=h;KA[i]=ctx.remA>1?ra/ctx.remA:1;KH[i]=ctx.remH>1?rh/ctx.remH:1;}}
  else{const probs=m=>{const k=(m/11)/2.06;return [Math.min(.62,.23*k),Math.min(.3,.15*k)];};
   const drv=(D,pT,pF)=>{let s=0;for(let d=0;d<D;d++){const r=Math.random();if(r<pT){const q=Math.random();s+=q<.03?6:q<.06?8:7;}else if(r<pT+pF)s+=3;}return s;};
@@ -1082,7 +1088,7 @@ function renderMatch(ctx,R){
  }
  const mostTop=most.filter(m=>m.p>=.55&&m.p<.97).sort((p,q)=>q.p-p.p).slice(0,12);
  const mostHTML=`<div class="card msec"><h3>Most likely outcomes</h3><div class="mlist">${mostTop.map(m=>`<div class="mitem"><span>${m.t}</span><b>${(m.p*100).toFixed(0)}%</b><span class="hint" style="margin:0">fair ${amer(m.p)}</span></div>`).join('')||'<span class="hint">Nothing above 55% yet.</span>'}</div></div>`;
- const propsHTML=dkProps?'':propRows.length?`<div class="card msec"><h3>${ctx.st==='live'?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims each</h3><div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings doesn’t post live props in the free feed, so these are the model’s live lines, limited to fair odds between -250 and +250.':'DraftKings props aren’t posted for this game yet. These are the model’s lines, limited to fair odds between -250 and +250.'}</div><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':'Player props need the live feed. Open Edge Lab from the website link.'}</div></div>`;
+ const propsHTML=dkProps?'':propRows.length?`<div class="card msec"><h3>${ctx.st==='live'?'Live player props (model lines)':'Player props (model lines)'} · ${NSIM.toLocaleString()} sims each</h3><div class="hint" style="margin:0 0 10px">${ctx.st==='live'?'DraftKings doesn’t post live props in the free feed, so these are the model’s live lines, limited to fair odds between -250 and +250.':'DraftKings props aren’t posted for this game yet. These are the model’s lines, limited to fair odds between -250 and +250.'}</div><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${propRows.join('')}</tbody></table></div>${moreRows.length?`<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">Show ${moreRows.length} more props</summary><div class="tw" style="margin:8px 0 0;box-shadow:none"><table class="mt"><tbody>${moreRows.join('')}</tbody></table></div></details>`:''}<div class="hint">Sorted by chance, highest first. ${ctx.st==='live'?'Over/Under lines are live, from the current score.':'Over/Under lines sit at each player’s projection.'}</div></div>`:`<div class="card msec"><h3>Player props</h3><div class="hint">${MATCH&&MATCH.sum?'No player data for this match.':(ctx.lg==='EuroLeague'?'Player props aren’t available for EuroLeague in the free feed.':'Player props need the live feed. Open Edge Lab from the website link.')}</div></div>`;
  const oddsBtn=LCFG[ctx.lg]?`<div class="run"><button class="btn ghost" onclick="openLive(${MATCH.idx})">Compare with my sportsbook odds</button></div>`:'';
  $('mbody').innerHTML=html+dkHTML+(soc?`<div class="mgrid">${secs.join('')}</div>`:'')+dkProps+propsHTML+oddsBtn+(MATCH&&MATCH.sum&&ctx.st!=='live'?`<h3 class="glg" style="margin:18px 0 8px">Season leaders</h3>`+leadersHTML(MATCH.sum):'');
  clearTimeout(MATCH.t);if(ctx.st==='live'||ctx.st==='up'){MATCH.t=setTimeout(()=>{if(MATCH&&$('matchbox').style.display==='block'){const g2=GAMES.list.find(z=>z[0]===ctx.lg&&z[2]===a&&z[3]===h);if(g2){const i2=GAMES.list.indexOf(g2);$('matchbox').querySelector('.mhead').innerHTML=matchHeader(g2);reSim(i2);}}},ctx.st==='live'?15000:60000);}
@@ -1097,15 +1103,15 @@ function copyOut(s){
  try{navigator.clipboard.writeText(txt).then(()=>{const t=$('toast');t.style.display='block';setTimeout(()=>t.style.display='none',1400);}).catch(()=>{});}catch(e){}
 }
 function show(t){
- if(!['today','games','next','nba','nfl','mlb','props','how'].includes(t))t='today';
+ if(t==='next')gView='next';t='games';
  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+t));
- if(t==='next')renderNext();if(t==='games')renderGames();
+ renderGames();
 }
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{location.hash=b.dataset.t;show(b.dataset.t);});
+
 window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
 $('blend').oninput=e=>$('blendv').textContent=e.target.value+'%';
-['nba','nfl','mlb'].forEach(renderSport);renderProps();renderToday();renderGames();renderNext();
+['nba','nfl','mlb'].forEach(renderSport);renderProps();renderToday();renderGames();
 show(location.hash.slice(1));
 </script>
 </body>
