@@ -1082,15 +1082,16 @@ async function openMatch(idx){
  let sum=null;if(X.id&&X.path&&lg!=='Tennis'&&lg!=='UFC')sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);
  if(!MATCH||MATCH.idx!==idx)return;
  MATCH.sum=sum;
- window.PPROPS=null;try{const luH=window.LU?LU.html(g,sum):'',wantPred=!luH&&st!=='final'&&window.LU;$('minfo').innerHTML=(st==='final'?hlHTML(g,sum):'')+(luH||(wantPred?'<div id="lupred"></div>':''))+infoHTML(g,sum);
-  if(wantPred){const K=gameKey(g);LU.predict(g,sum).then(x=>{const el=$('lupred');if(x&&el&&MATCH&&gameKey(MATCH.g)===K){el.outerHTML=x;const c=$('lucard');if(c&&c.animate)c.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:400,easing:'cubic-bezier(.2,.8,.2,1)'});}}).catch(()=>{});}}catch(e){}
+ window.PPROPS=null;MATCH.L=null;try{const L0=window.LU?LU.official(g,sum):null,wantPred=!L0&&st!=='final'&&window.LU;MATCH.L=L0;$('minfo').innerHTML=(st==='final'?hlHTML(g,sum):'')+(L0?LU.renderL(g,L0):(wantPred?'<div id="lupred"><div class="card msec"><div class="hint" style="margin:0">Predicting lineups…</div></div></div>':''))+infoHTML(g,sum);
+  if(wantPred){const K=gameKey(g);const P=await Promise.race([LU.predictData(g,sum).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),8000))]);if(!MATCH||gameKey(MATCH.g)!==K)return;MATCH.L=P;const el=$('lupred');if(el){if(P){el.outerHTML=LU.renderL(g,P);const c=$('lucard');if(c&&c.animate)c.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:400,easing:'cubic-bezier(.2,.8,.2,1)'});}else el.remove();}}}catch(e){}
  if(st!=='final'&&!isPro()){$('mbody').innerHTML=lockHTML(g);if(st==='live'){const K=gameKey(g),hb=()=>liveTick(K,hb,5000);hb();}return;}
  try{
   if(lg==='UFC')return ufcOpen(g,idx);
   if(ALT.includes(lg)&&st!=='final'){altRun(g,gameKey(g));return;}
   if(st==='final')return renderFinal(sum);
   const ctx=await buildCtx(g,sum);
-  setTimeout(()=>{const R=runMatchSim(ctx);if(MATCH&&MATCH.idx===idx)renderMatch(ctx,R);},20);
+  if(st==='up'&&window.IMP){try{await IMP.apply(g,sum,MATCH&&MATCH.L,ctx);}catch(e){}}
+  setTimeout(()=>{const R=runMatchSim(ctx);if(MATCH&&MATCH.idx===idx){renderMatch(ctx,R);window.IMP&&IMP.inject(ctx);}},20);
  }catch(e){$('mbody').innerHTML=`<div class="card">Could not build this match: ${e.message||e}</div>`;}
 }
 function closeMatch(){if(MATCH)clearTimeout(MATCH.t);$('matchbox').style.display='none';document.body.style.overflow='';MATCH=null;}
@@ -1401,13 +1402,13 @@ function renderMatch(ctx,R){
  $('mbody').innerHTML=html+dkProps+propsHTML+oddsBtn;
  if(MATCH&&(ctx.st==='live'||ctx.st==='up')){const K=gameKey(MATCH.g);liveTick(K,g2=>reSim(GAMES.list.indexOf(g2)),ctx.st==='live'?15000:60000);}
 }
-async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);const R=runMatchSim(ctx);if(MATCH)renderMatch(ctx,R);}
+async function reSim(idx){const g=GAMES.list[idx];if(!MATCH)return;MATCH.idx=idx;MATCH.g=g;const X=g[10]||{};let sum=null;if(X.id)sum=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(!MATCH)return;MATCH.sum=sum||MATCH.sum;if(g[1]==='final')return renderFinal(MATCH.sum);const ctx=await buildCtx(g,MATCH.sum);if(g[1]==='up'&&window.IMP){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}}if(!MATCH)return;const R=runMatchSim(ctx);if(MATCH){renderMatch(ctx,R);window.IMP&&IMP.inject(ctx);}}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MATCH)closeMatch();});
 
 /* ---------- NHL, MLB and tennis: simulation + match page ---------- */
 const ALT=['NHL','MLB','Tennis','UFC'];
 function liveTick(K,fn,ms){if(!MATCH)return;clearTimeout(MATCH.t);MATCH.t=setTimeout(()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;const g2=GAMES.list.find(z=>gameKey(z)===K);if(!g2)return;MATCH.g=g2;MATCH.idx=GAMES.list.indexOf(g2);const hd=$('matchbox').querySelector('.mhead');if(hd)hd.innerHTML=matchHeader(g2);fn(g2);},ms);}
-function altRun(g,K){const ctx=altCtx(g);setTimeout(async()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;if(ctx.lg==='NHL'){try{const X=g[10]||{};if(g[1]==='live'&&X.id&&X.path){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(s2&&MATCH)MATCH.sum=s2;}ctx.pl=await nhlPlayers(g,MATCH&&MATCH.sum);}catch(e){ctx.pl=null;}if(!MATCH||gameKey(MATCH.g)!==K)return;}const R=altSim(ctx);renderAlt(ctx,R);if(ctx.pl&&ctx.pl.length){try{$('mbody').insertAdjacentHTML('beforeend',nhlProps(ctx,R));}catch(e){}}if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
+function altRun(g,K){const ctx=altCtx(g);setTimeout(async()=>{if(!MATCH||gameKey(MATCH.g)!==K)return;if(ctx.lg==='NHL'){try{const X=g[10]||{};if(g[1]==='live'&&X.id&&X.path){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${X.id}`);if(s2&&MATCH)MATCH.sum=s2;}ctx.pl=await nhlPlayers(g,MATCH&&MATCH.sum);}catch(e){ctx.pl=null;}if(!MATCH||gameKey(MATCH.g)!==K)return;}if(g[1]==='up'&&window.IMP&&(ctx.lg==='NHL'||ctx.lg==='MLB')){try{await IMP.apply(g,MATCH.sum,MATCH.L,ctx);}catch(e){}if(!MATCH||gameKey(MATCH.g)!==K)return;}const R=altSim(ctx);renderAlt(ctx,R);window.IMP&&IMP.inject(ctx);if(ctx.pl&&ctx.pl.length){try{$('mbody').insertAdjacentHTML('beforeend',nhlProps(ctx,R));}catch(e){}}if(g[1]==='live')liveTick(K,g2=>{if(g2[1]==='final')return reopen();altRun(g2,K);},15000);},20);}
 let TEN={days:{},cur:{}};
 async function fetchTennis(full){
  const now=Date.now();
@@ -2363,6 +2364,29 @@ const css=`
 .motm{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0 0 6px;border-radius:12px;background:linear-gradient(90deg,color-mix(in srgb,#f2c94c 18%,var(--surface2)),var(--surface2));cursor:pointer}.motm .star{font-size:24px;color:#f2c94c}.motm small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.motm b{display:block}.motm .rt{margin-left:auto}
 .lu-subwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}@media(max-width:560px){.lu-subwrap{grid-template-columns:1fr}}
 .subrow{display:flex;align-items:center;gap:8px;padding:7px 4px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}.subrow:hover{background:var(--surface2)}.subrow b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.subrow small{color:var(--mut);font-size:11px}.subrow .evs{display:flex;gap:2px}
+
+.segm{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:3px;margin:0 0 10px}.segm button{border:0;background:none;color:var(--mut);font:700 12px var(--body);padding:7px 14px;border-radius:8px;cursor:pointer}.segm button.on{background:var(--accent);color:var(--accent-ink)}
+.pitch2{aspect-ratio:100/160;max-width:470px;border-radius:16px;box-shadow:0 14px 34px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.06)}
+.pitch2.predf::after{content:"PREDICTED";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-28deg);font:800 34px var(--display);letter-spacing:.2em;color:rgba(255,255,255,.07);pointer-events:none}
+.pbar2{position:absolute;left:8px;right:8px;display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:10px;background:rgba(5,10,8,.55);backdrop-filter:blur(6px);z-index:3;font-size:12px;color:#fff}.pbar2.top{top:6px}.pbar2.bot{bottom:6px}.pbar2 img{width:20px;height:20px;object-fit:contain}.pbar2 b{font:800 13px var(--display);text-transform:uppercase;letter-spacing:.03em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fchip{font:700 11px var(--body);background:rgba(255,255,255,.14);padding:2px 7px;border-radius:99px}.avg{font:800 11px var(--body);color:#0b0d10;padding:2px 6px;border-radius:6px}
+@keyframes tokIn{from{opacity:0;transform:translate(-50%,-30%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.tok{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;padding:0;color:#fff;cursor:pointer;width:70px;z-index:2;animation:tokIn .45s cubic-bezier(.2,.9,.3,1.2) backwards;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.tok:hover{transform:translate(-50%,-50%) scale(1.1)}.tok:active{transform:translate(-50%,-50%) scale(.92)}
+.tok .kit{position:relative;width:42px;height:42px;filter:drop-shadow(0 5px 6px rgba(0,0,0,.5))}
+.tok.pred .kit{opacity:.92}.tok.pred .kit::after{content:"";position:absolute;inset:-3px;border:1.5px dashed rgba(255,255,255,.55);border-radius:50%}
+.tok .nm{font:700 11px/1.1 var(--body);text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.6);max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tok .rt{position:absolute;top:-7px;right:-12px;z-index:2;font:800 10px/1 var(--body);box-shadow:0 2px 5px rgba(0,0,0,.45)}
+.tok .bdg{position:absolute;bottom:-4px;left:-12px;display:flex;flex-direction:column;gap:2px}
+.b{font-style:normal;display:inline-grid;place-items:center;min-width:15px;height:15px;border-radius:99px;background:#fff;color:#0b0d10;font:800 9px var(--body);padding:0 3px;box-shadow:0 1px 3px rgba(0,0,0,.5)}.b.goal{background:#fff;font-size:9px}.b.ast{background:#3fa9ff;color:#fff}.b.og{background:#ff4d5e;color:#fff}.b.yc{width:10px;min-width:10px;height:13px;border-radius:2px;background:#ffd33d}.b.rc{width:10px;min-width:10px;height:13px;border-radius:2px;background:#ff3b4e}
+.tok .so{position:absolute;bottom:-3px;right:-10px;width:15px;height:15px;border-radius:50%;background:#ff4d5e;color:#fff;font:900 10px/15px var(--body);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.motm2{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;margin:0 0 10px;border:1px solid color-mix(in srgb,#f2c94c 40%,var(--line));border-radius:14px;background:linear-gradient(90deg,color-mix(in srgb,#f2c94c 20%,var(--surface2)),var(--surface2));color:var(--ink);cursor:pointer;font:inherit}.motm2 .kit{width:38px;height:38px}.motm2 small{display:block;color:#f2c94c;font:800 10px var(--body);letter-spacing:.08em;text-transform:uppercase}.motm2 b{display:block;font:800 17px var(--display);text-transform:uppercase}
+.bwrap{margin-top:12px}.bscroll{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none}.bscroll::-webkit-scrollbar{display:none}
+.bcard{flex:none;width:84px;position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--ink);cursor:pointer;font:inherit}.bcard.used{border-color:color-mix(in srgb,var(--good) 45%,var(--line))}.bcard b{font-size:12px;max-width:76px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bcard small{font-size:10px;color:var(--mut)}.bcard .in{font:800 10px var(--body);color:var(--good)}.bcard .rt{position:absolute;top:4px;right:4px}.bcard .evs{display:flex;gap:1px}
+.kit.xs{width:24px;height:24px;flex:none}
+.lhead{display:grid;grid-template-columns:1fr 1fr;gap:10px;font:800 13px var(--display);text-transform:uppercase;margin-bottom:4px}.lhead img{width:18px;height:18px;object-fit:contain;vertical-align:-4px;margin-right:6px}
+.lgrp{font:800 10px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:12px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.lcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lrow{display:flex;align-items:center;gap:7px;padding:6px 4px;border-radius:8px;cursor:pointer}.lrow:hover{background:var(--surface2)}.lrow .ln{flex:1;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lrow small{display:block;color:var(--mut);font-size:10px;font-weight:500}.lrow .evs{display:flex;gap:1px}
 /* ---- motion ---- */
 @keyframes ovIn{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -2384,6 +2408,7 @@ let uxT=null;document.addEventListener('click',()=>{document.body.classList.add(
 
 /* ---------- field backgrounds ---------- */
 const BG={
+soccer2:`<svg class="bg" viewBox="0 0 100 160" preserveAspectRatio="none"><defs><pattern id="mw" width="100" height="20" patternUnits="userSpaceOnUse"><rect width="100" height="10" fill="#2e8b4a"/><rect y="10" width="100" height="10" fill="#28803f"/></pattern><radialGradient id="gl" cx="50%" cy="50%" r="65%"><stop offset="0" stop-color="#fff" stop-opacity=".10"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></radialGradient></defs><rect width="100" height="160" fill="url(#mw)"/><rect width="100" height="160" fill="url(#gl)"/><g fill="none" stroke="rgba(255,255,255,.75)" stroke-width=".45"><rect x="4" y="8" width="92" height="144"/><line x1="4" y1="80" x2="96" y2="80"/><circle cx="50" cy="80" r="10"/><rect x="24" y="8" width="52" height="19"/><rect x="38" y="8" width="24" height="7"/><rect x="24" y="133" width="52" height="19"/><rect x="38" y="145" width="24" height="7"/><path d="M41.5 27 A9.5 9.5 0 0 0 58.5 27"/><path d="M41.5 133 A9.5 9.5 0 0 1 58.5 133"/><path d="M4 10 A2 2 0 0 0 6 8"/><path d="M94 8 A2 2 0 0 0 96 10"/><path d="M4 150 A2 2 0 0 1 6 152"/><path d="M96 150 A2 2 0 0 0 94 152"/></g><g fill="rgba(255,255,255,.85)"><circle cx="50" cy="80" r=".8"/><circle cx="50" cy="21" r=".6"/><circle cx="50" cy="139" r=".6"/></g><rect x="44" y="5.6" width="12" height="2.4" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.8)" stroke-width=".4"/><rect x="44" y="152" width="12" height="2.4" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.8)" stroke-width=".4"/></svg>`,
 soccer:`<svg class="bg" viewBox="0 0 100 150" preserveAspectRatio="none"><defs><pattern id="gs" width="100" height="18.75" patternUnits="userSpaceOnUse"><rect width="100" height="9.375" fill="#2f8f4e"/><rect y="9.375" width="100" height="9.375" fill="#2b8448"/></pattern></defs><rect width="100" height="150" fill="url(#gs)"/><g fill="none" stroke="rgba(255,255,255,.7)" stroke-width=".5"><rect x="3" y="3" width="94" height="144"/><line x1="3" y1="75" x2="97" y2="75"/><circle cx="50" cy="75" r="11"/><rect x="24" y="3" width="52" height="20"/><rect x="38" y="3" width="24" height="7"/><rect x="24" y="127" width="52" height="20"/><rect x="38" y="140" width="24" height="7"/><path d="M41 23 A10 10 0 0 0 59 23"/><path d="M41 127 A10 10 0 0 1 59 127"/></g><circle cx="50" cy="75" r=".9" fill="#fff"/></svg>`,
 court:`<svg class="bg" viewBox="0 0 100 94" preserveAspectRatio="none"><rect width="100" height="94" fill="#c98a4b"/><g stroke="rgba(120,70,30,.25)" stroke-width=".35">${Array.from({length:24},(_,i)=>`<line x1="${i*4.3}" y1="0" x2="${i*4.3}" y2="94"/>`).join('')}</g><g fill="none" stroke="#fff" stroke-width=".7"><rect x="2" y="2" width="96" height="90"/><rect x="34" y="2" width="32" height="38" fill="rgba(31,130,90,.35)"/><circle cx="50" cy="40" r="12"/><path d="M8 2 V28 A42 42 0 0 0 92 28 V2"/><path d="M38 92 A12 12 0 0 1 62 92"/></g><circle cx="50" cy="8" r="1.8" fill="none" stroke="#ff6a2b" stroke-width=".7"/><line x1="44" y1="5" x2="56" y2="5" stroke="#fff" stroke-width=".8"/></svg>`,
 rink:`<svg class="bg" viewBox="0 0 100 130" preserveAspectRatio="none"><rect width="100" height="130" rx="18" fill="#eef4f8"/><g fill="none" stroke-width=".8"><rect x="1.5" y="1.5" width="97" height="127" rx="17" stroke="#9fb4c4"/><line x1="2" y1="12" x2="98" y2="12" stroke="#e23b3b"/><line x1="2" y1="44" x2="98" y2="44" stroke="#2f62c9" stroke-width="2"/><line x1="2" y1="65" x2="98" y2="65" stroke="#e23b3b" stroke-width="1.5"/><circle cx="50" cy="65" r="10" stroke="#2f62c9"/><circle cx="25" cy="28" r="8" stroke="#e23b3b"/><circle cx="75" cy="28" r="8" stroke="#e23b3b"/></g><path d="M44 12 A6 6 0 0 0 56 12 Z" fill="rgba(70,140,230,.35)" stroke="#e23b3b" stroke-width=".6"/><rect x="46" y="9" width="8" height="3" fill="none" stroke="#e23b3b" stroke-width=".6"/></svg>`,
@@ -2450,36 +2475,49 @@ function evIcons(e){if(!e||!e.length)return '';const n=t=>e.filter(x=>x.t===t).l
 function shirt(col,num){const tx=lum(col)>.45?'#0b0d10':'#fff';return `<svg viewBox="0 0 40 40" class="shirt"><path d="M13 4 L7 7 L2 14 L7 18 L9 15 L9 37 L31 37 L31 15 L33 18 L38 14 L33 7 L27 4 Q20 9 13 4Z" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width="1"/><text x="20" y="28" text-anchor="middle" font-family="Barlow Condensed,Arial" font-weight="800" font-size="14" fill="${tx}">${esc(num)}</text></svg>`;}
 const hexd=(a,b)=>{const f=h=>[0,2,4].map(i=>parseInt(String(h).replace('#','').substr(i,2),16)||0);const x=f(a),y=f(b);return Math.abs(x[0]-y[0])+Math.abs(x[1]-y[1])+Math.abs(x[2]-y[2]);};
 const gkCol=t=>['#f2c94c','#22c3a6','#ff7a1a','#c45cff'].sort((p,q)=>hexd(q,t.col)-hexd(p,t.col))[0];
-function socPin(p,x,y,t,ev,live,side){const k=LU.reg(p,side),gk=/^(G|GK)$/.test(p.pos),col=gk?gkCol(t):t.col,r=live?rating(p,ev,gk):null,out=(ev||[]).find(e=>e.t==='out');
- return `<button class="spl" style="left:${x}%;top:${y}%" onclick="LU.open(${k})">${r!=null?`<span class="rt" style="background:${rcol(r)}">${r.toFixed(1)}</span>`:''}<span class="kit">${shirt(col,p.j||'')}</span><span class="evs">${evIcons(ev)}</span>${out?`<span class="subo">▼${esc(out.m)}</span>`:''}<span class="nm">${esc(last(p.n))}</span></button>`;}
-function soccerView(g,L,A,H,title){const live=!L.predicted&&g[1]!=='up',E=live?socEvents(MATCH&&MATCH.sum):{},rA=soccerRows(A),rH=soccerRows(H);let pins='';
- rA.forEach((row,ri)=>row.forEach((p,ci)=>{pins+=socPin(p,100-(ci+1)*100/(row.length+1),Math.min(45,6.5+ri*(38/(rA.length-1))),A,E[p.n],live,'a');}));
- rH.forEach((row,ri)=>row.forEach((p,ci)=>{pins+=socPin(p,(ci+1)*100/(row.length+1),Math.max(55,93.5-ri*(38/(rH.length-1))),H,E[p.n],live,'h');}));
+function socPin(p,x,y,t,ev,live,side,i,pred){const k=LU.reg(p,side),gk=/^(G|GK)$/.test(p.pos),col=gk?gkCol(t):t.col,r=live?rating(p,ev,gk):null,e=ev||[],out=e.find(z=>z.t==='out'),n=tt=>e.filter(z=>z.t===tt).length;
+ const badges=[];if(n('g'))badges.push(`<i class="b goal">⚽${n('g')>1?n('g'):''}</i>`);if(n('og'))badges.push('<i class="b og">OG</i>');if(n('a'))badges.push(`<i class="b ast">A${n('a')>1?n('a'):''}</i>`);if(n('r'))badges.push('<i class="b rc"></i>');else if(n('y'))badges.push('<i class="b yc"></i>');
+ return `<button class="tok${pred?' pred':''}" style="left:${x}%;top:${y}%;animation-delay:${(i*35)}ms" onclick="LU.open(${k})" aria-label="${esc(p.n)}"><span class="kit">${shirt(col,p.j||'')}${r!=null?`<span class="rt" style="background:${rcol(r)}">${r.toFixed(1)}</span>`:''}${badges.length?`<span class="bdg">${badges.join('')}</span>`:''}${out?`<span class="so" title="Off ${esc(out.m)}">↓</span>`:''}</span><span class="nm">${esc(last(p.n))}</span></button>`;}
+function soccerView(g,L,A,H,title){const live=!L.predicted&&g[1]!=='up',E=live?socEvents(MATCH&&MATCH.sum):{},rA=soccerRows(A),rH=soccerRows(H),pred=!!L.predicted;let pins='',i=0;
+ rA.forEach((row,ri)=>row.forEach((p,ci)=>{pins+=socPin(p,100-(ci+1)*100/(row.length+1),Math.min(44,9+ri*(35/(rA.length-1))),A,E[p.n],live,'a',i++,pred);}));
+ rH.forEach((row,ri)=>row.forEach((p,ci)=>{pins+=socPin(p,(ci+1)*100/(row.length+1),Math.max(56,91-ri*(35/(rH.length-1))),H,E[p.n],live,'h',i++,pred);}));
  let motm='';if(live){let best=null;for(const t of [A,H])for(const p of [...t.ps,...(t.bench||[]).filter(b=>b.subIn)]){const r=rating(p,E[p.n],/^(G|GK)$/.test(p.pos));if(!best||r>best.r)best={p,r,t};}
-  if(best)motm=`<div class="motm" onclick="LU.open(${LU.reg(best.p,best.t.side)})"><span class="star">★</span><span><small>${g[1]==='final'?'Player of the match':'Top performer so far'}</small><b>${esc(best.p.n)}</b><span class="hint" style="margin:0">${esc(best.t.name)}</span></span><span class="rt big" style="background:${rcol(best.r)}">${best.r.toFixed(1)}</span></div>`;}
- const head=t=>`<div class="lu-th">${t.logo?`<img src="${esc(t.logo)}" alt="">`:''}<span><b>${esc(t.name)}</b><small>${esc(t.form||'')}</small></span><span class="lu-avg">${live?`Avg <b style="color:${rcol(avgR(t,E))}">${avgR(t,E).toFixed(2)}</b>`:''}</span></div>`;
- const subs=t=>{const b=t.bench||[];if(!b.length)return '';const used=b.filter(p=>p.subIn||(E[p.n]||[]).some(e=>e.t==='in')),rest=b.filter(p=>!used.includes(p));
-  const row=p=>{const ev=E[p.n]||[],inn=ev.find(e=>e.t==='in'),r=live&&inn?rating(p,ev,/^(G|GK)$/.test(p.pos)):null;return `<div class="subrow" onclick="LU.open(${LU.reg(p,t.side)})"><span class="kit sm">${shirt(/^(G|GK)$/.test(p.pos)?gkCol(t):t.col,p.j||'')}</span><span style="flex:1;min-width:0"><b>${esc(p.n)}</b><small>${esc(p.pos)}${inn?` · <span style="color:var(--good)">▲ ${esc(inn.m)}</span>`:''}</small></span><span class="evs">${evIcons(ev)}</span>${r!=null?`<span class="rt" style="background:${rcol(r)}">${r.toFixed(1)}</span>`:''}</div>`;};
-  return `<div class="lu-subs"><div class="lu-line">${esc(t.name)} · substitutes</div>${used.map(row).join('')}${rest.map(row).join('')}</div>`;};
- return title+motm+head(A)+`<div class="field pitch" style="aspect-ratio:100/172;max-width:460px">${BG.soccer}<div class="pshade"></div>${pins}</div>`+head(H)+`<div class="lu-subwrap">${subs(A)}${subs(H)}</div>${live?'<div class="hint" style="margin-top:6px">Ratings are Edge Lab’s own, from goals, assists, shots, cards and saves in this match.</div>':''}`;}
+  if(best)motm=`<button class="motm2" onclick="LU.open(${LU.reg(best.p,best.t.side)})"><span class="kit">${shirt(best.t.col,best.p.j||'')}</span><span style="flex:1;text-align:left"><small>${g[1]==='final'?'Player of the match':'Top performer so far'}</small><b>${esc(best.p.n)}</b><span class="hint" style="margin:0">${esc(best.t.name)}</span></span><span class="rt big" style="background:${rcol(best.r)}">${best.r.toFixed(1)}</span></button>`;}
+ const bar=(t,pos)=>`<div class="pbar2 ${pos}">${t.logo?`<img src="${esc(t.logo)}" alt="">`:''}<b>${esc(t.name)}</b><span class="fchip">${esc(t.form||'')}</span>${live?`<span class="avg" style="background:${rcol(avgR(t,E))}">${avgR(t,E).toFixed(1)}</span>`:''}</div>`;
+ const benchCards=t=>{const b=t.bench||[];if(!b.length)return '';const used=b.filter(p=>p.subIn||(E[p.n]||[]).some(e=>e.t==='in')),rest=b.filter(p=>!used.includes(p));
+  return `<div class="bwrap"><div class="lu-line">${t.logo?`<img src="${esc(t.logo)}" alt="" style="width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:6px">`:''}${esc(t.name)} · bench</div><div class="bscroll">${[...used,...rest].map(p=>{const ev=E[p.n]||[],inn=ev.find(e=>e.t==='in'),r=live&&inn?rating(p,ev,/^(G|GK)$/.test(p.pos)):null;
+   return `<button class="bcard${inn?' used':''}" onclick="LU.open(${LU.reg(p,t.side)})"><span class="kit sm">${shirt(/^(G|GK)$/.test(p.pos)?gkCol(t):t.col,p.j||'')}</span><b>${esc(last(p.n))}</b><small>${esc(p.pos)}</small>${inn?`<span class="in">↑ ${esc(inn.m)}</span>`:''}${r!=null?`<span class="rt" style="background:${rcol(r)}">${r.toFixed(1)}</span>`:''}${evIcons(ev)?`<span class="evs">${evIcons(ev)}</span>`:''}</button>`;}).join('')}</div></div>`;};
+ const grp=p=>{const d=depth(p.pos);return d===0?'Goalkeeper':d===1?'Defenders':d<=4?'Midfielders':'Forwards';};
+ const listV=['Goalkeeper','Defenders','Midfielders','Forwards'].map(G=>{const col=t=>t.ps.filter(p=>grp(p)===G).map(p=>{const ev=E[p.n],r=live?rating(p,ev,G==='Goalkeeper'):null;return `<div class="lrow" onclick="LU.open(${LU.reg(p,t.side)})"><span class="kit xs">${shirt(G==='Goalkeeper'?gkCol(t):t.col,p.j||'')}</span><span class="ln">${esc(p.n)}<small>${esc(p.pos)}</small></span><span class="evs">${evIcons(ev)}</span>${r!=null?`<span class="rt" style="background:${rcol(r)}">${r.toFixed(1)}</span>`:''}</div>`;}).join('');return `<div class="lgrp">${G}</div><div class="lcols"><div>${col(A)}</div><div>${col(H)}</div></div>`;}).join('');
+ const view=LU._sv||'pitch';
+ return title+`<div class="segm"><button class="${view==='pitch'?'on':''}" onclick="LU.sv('pitch')">⚽ Pitch</button><button class="${view==='list'?'on':''}" onclick="LU.sv('list')">☰ List</button></div>`+motm+
+ (view==='pitch'?`<div class="field pitch2${pred?' predf':''}">${BG.soccer2}${bar(A,'top')}${bar(H,'bot')}${pins}</div>`:`<div class="lhead"><span>${A.logo?`<img src="${esc(A.logo)}" alt="">`:''}${esc(A.name)}</span><span>${H.logo?`<img src="${esc(H.logo)}" alt="">`:''}${esc(H.name)}</span></div>${listV}`)+
+ benchCards(A)+benchCards(H)+(live?'<div class="hint" style="margin-top:8px">Ratings are Edge Lab’s own, from this match’s goals, assists, shots, cards and saves.</div>':'');}
+LU.sv=v=>{LU._sv=v;const c=$l('lucard');if(c){c.innerHTML=luBody();c.animate&&c.animate([{opacity:.3},{opacity:1}],{duration:260,easing:'ease-out'});}};
 function avgR(t,E){const ps=t.ps;return ps.reduce((s,p)=>s+rating(p,E[p.n],/^(G|GK)$/.test(p.pos)),0)/ps.length;}
 /* ---------- predicted lineups (last game + injuries) ---------- */
-LU.predict=async function(g,sum){const lg=g[0],X=g[10]||{};if(!X.path||!X.aid||!X.hid||lg==='NFL'||lg==='Tennis'||lg==='UFC')return '';
- const out=[]; const injured=new Set();for(const T of (sum&&sum.injuries)||[])for(const i of T.injuries||[])if(/out|injur|suspend/i.test(i.status||'')&&i.athlete)injured.add(i.athlete.displayName);
+const PCACHE={};
+LU.predictData=async function(g,sum){const lg=g[0],X=g[10]||{};if(!X.path||!X.aid||!X.hid||lg==='NFL'||lg==='Tennis'||lg==='UFC')return null;
+ const ck=gameKey(g);if(PCACHE[ck]&&Date.now()-PCACHE[ck].t<5*60e3)return JSON.parse(JSON.stringify(PCACHE[ck].L));
+ const out=[];const injured=new Set();for(const T of (sum&&sum.injuries)||[])for(const i of T.injuries||[])if(/out|injur|suspend/i.test(i.status||'')&&i.athlete)injured.add(i.athlete.displayName);
  let injN=0;
  for(const [side,tid] of [['a',X.aid],['h',X.hid]]){
   const sch=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/teams/${tid}/schedule`);const evs=((sch&&sch.events)||[]).filter(e=>{const c=e.competitions&&e.competitions[0];return c&&c.status&&c.status.type&&c.status.type.completed&&e.id!==X.id;}).sort((p,q)=>Date.parse(q.date)-Date.parse(p.date));
   let team=null;for(const e of evs.slice(0,3)){const s2=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/summary?event=${e.id}`);let L2=null;try{L2=getLineup([lg,'final','','','','','','','','',{hid:'x',aid:'y'}],s2);}catch(er){}
    if(L2){team=L2.teams.find(t=>String(t.tid)===String(tid));if(team)break;}}
-  if(!team)return '';team=JSON.parse(JSON.stringify(team));team.side=side;
-  const swapOut=(arr,bench,match)=>{for(let i=0;i<arr.length;i++){if(injured.has(arr[i].n)){injN++;const j=(bench||[]).findIndex(b=>!injured.has(b.n)&&match(b,arr[i]));if(j>=0){arr[i]=Object.assign(bench.splice(j,1)[0],{fp:arr[i].fp,pos:arr[i].pos});}}}};
-  if(team.ps)swapOut(team.ps,team.bench,(b,p)=>lg==='MLB'||!SOCCER.includes(lg)||depth(b.pos)===depth(p.pos)||true);
-  if(team.ps)team.ps.forEach(p=>{p.st={};p.subIn=p.subOut=false;});(team.bench||[]).forEach(p=>{p.st={};p.subIn=false;});
-  if(lg==='MLB'){try{const c=sum.header.competitions[0].competitors.find(c=>String(c.id)===String(tid)||(c.team&&String(c.team.id)===String(tid)));const pr=(c&&c.probables||[])[0];team.sp=pr&&pr.athlete?{id:pr.athlete.id,n:pr.athlete.displayName||pr.athlete.fullName,pos:'P',j:pr.athlete.jersey||'',hs:(pr.athlete.headshot&&pr.athlete.headshot.href)||''}:null;}catch(e){team.sp=null;}}
+  if(!team)return null;team=JSON.parse(JSON.stringify(team));team.side=side;team.removed=[];
+  team.base=(team.ps||[...(team.F||[]),...(team.D||[]),...(team.G||[]).slice(0,1)]).map(p=>({n:p.n,id:p.id,pos:p.pos}));
+  const swapOut=arr=>{for(let i=0;i<arr.length;i++){if(injured.has(arr[i].n)){injN++;team.removed.push({n:arr[i].n,id:arr[i].id,pos:arr[i].pos});const pool=team.bench||[];let j=pool.findIndex(b=>!injured.has(b.n)&&(!SOCCER.includes(lg)||depth(b.pos)===depth(arr[i].pos)));if(j<0)j=pool.findIndex(b=>!injured.has(b.n));if(j>=0)arr[i]=Object.assign(pool.splice(j,1)[0],{fp:arr[i].fp,pos:arr[i].pos});}}};
+  if(team.ps)swapOut(team.ps);
+  if(team.F){for(const k of ['F','D','G']){const keep=[];for(const p of team[k]){if(injured.has(p.n)){injN++;team.removed.push({n:p.n,id:p.id,pos:p.pos});}else keep.push(p);}team[k]=keep;}}
+  (team.ps||[]).forEach(p=>{p.st={};p.subIn=p.subOut=false;});(team.bench||[]).forEach(p=>{p.st={};p.subIn=false;});
+  if(lg==='MLB'){try{const c=sum.header.competitions[0].competitors.find(c=>String(c.id)===String(tid)||(c.team&&String(c.team.id)===String(tid)));const pr=(c&&c.probables||[])[0];team.sp=pr&&pr.athlete?{id:pr.athlete.id,n:pr.athlete.displayName||pr.athlete.fullName,pos:'P',j:pr.athlete.jersey||'',hs:(pr.athlete.headshot&&pr.athlete.headshot.href)||'',era:((pr.statistics||[]).find(x=>/ERA/i.test(x.abbreviation||x.name||''))||{}).displayValue}:null;}catch(e){team.sp=null;}}
   out.push(team);}
  const kind=SOCCER.includes(lg)?'soccer':lg==='MLB'?'mlb':lg==='NHL'?'nhl':'nba';
- if(!MATCH||gameKey(MATCH.g)!==gameKey(g))return '';
- CUR={g,L:{kind,teams:out,predicted:true,injN}};return `<div class="card msec" id="lucard">${luBody()}</div>`;};
+ const L={kind,teams:out,predicted:true,injN};PCACHE[ck]={t:Date.now(),L:JSON.parse(JSON.stringify(L))};return L;};
+LU.official=function(g,sum){try{return getLineup(g,sum);}catch(e){return null;}};
+LU.renderL=function(g,L){CUR={g,L};return `<div class="card msec" id="lucard">${luBody()}</div>`;};
+LU.predict=async function(g,sum){const L=await LU.predictData(g,sum);if(!L||!MATCH||gameKey(MATCH.g)!==gameKey(g))return '';return LU.renderL(g,L);};
 
 /* ---------- renderers ---------- */
 
@@ -2516,6 +2554,76 @@ LU.open=function(k){const p=REG[k];if(!p)return;const s=sheet(),sh=s.querySelect
   else body=`<div style="margin-top:12px">${mine.slice(0,14).map(x=>`<div class="pp"><div><b>${esc(x.stat)}</b> ${esc(x.label)}<div class="hint" style="margin:0">Projection ${esc(x.proj)}</div><div class="bar"><span data-w="${(x.p*100).toFixed(1)}"></span></div></div><b class="c">${x.p>=.995?'Hit ✓':(x.p*100).toFixed(0)+'%'}</b></div>`).join('')}</div><div class="hint">${NSIM.toLocaleString()} simulations · chance of hitting each line.</div>`;}
  sh.innerHTML=head+body;s.style.display='block';requestAnimationFrame(()=>{requestAnimationFrame(()=>{s.classList.add('on');sh.querySelectorAll('.bar span').forEach(b=>b.style.width=b.dataset.w+'%');});});};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')LU.close();});
+})();
+
+</script>
+<script>
+/* ================= LINEUP & INJURY IMPACT on the 100,000-simulation model ================= */
+(function(){
+const IMP={};window.IMP=IMP;
+const PM=s=>{s=String(s||'').toLowerCase();if(/out|injured reserve|ir\b|suspend|inactive/.test(s))return 1;if(/doubt/.test(s))return .75;if(/question|game.?time|gtd/.test(s))return .4;if(/day.?to.?day/.test(s))return .35;if(/probable/.test(s))return .1;return .5;};
+const nm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+const dep=p=>{p=String(p||'').toUpperCase();if(p==='G'||p==='GK')return 0;if(/^(CD|CB|D|LB|RB|SW|LWB|RWB)/.test(p))return 1;return 2;};
+const SOCS={};
+async function socStats(id,lgp){if(id in SOCS)return SOCS[id];let r=null;try{const d=await getJSON(`https://site.web.api.espn.com/apis/common/v3/sports/soccer/${lgp}/athletes/${id}/overview`);const s=d.statistics,n=s.names,t={};for(const sp of s.splits||[])sp.stats.forEach((v,i)=>{t[n[i]]=(t[n[i]]||0)+(parseFloat(String(v).replace(/,/g,''))||0);});const m=Math.max(1,t.starts||t.appearances||0);r={g:(t.totalGoals||0)/m,a:(t.goalAssists||0)/m,starts:t.starts||0};}catch(e){}return SOCS[id]=r;}
+function injuries(g,sum){const X=g[10]||{},out=[];for(const T of (sum&&sum.injuries)||[]){const tid=String((T.team&&T.team.id)||''),side=tid===String(X.hid)?'h':tid===String(X.aid)?'a':null;if(!side)continue;
+  for(const i of T.injuries||[]){const a=i.athlete||{};const p=PM(i.status||(i.type&&i.type.description));if(p<=.05)continue;out.push({side,id:a.id,n:a.displayName||a.fullName||'',pos:(a.position&&a.position.abbreviation)||'',status:i.status||'Injured',p});}}return out;}
+const ot=(r,lh,la)=>[r[0]+r[1]*lh/(lh+la),0,r[2]+r[1]*la/(lh+la)];
+const fmt=(x,u)=>(x>0?'+':'')+x.toFixed(u==='%'?0:1)+(u==='%'?'%':' '+u);
+
+/* apply to a context (pregame): returns {items,before,after,mf,lineup} */
+IMP.apply=async function(g,sum,L,ctx){const lg=g[0],X=g[10]||{},soc=SOCCER.includes(lg);
+ const hasMkt=soc?!!(ctx.dk&&ctx.dk.mlH!=null):lg==='NBA'?(ctx.spread!=null||!!ctx.dk):X.total!=null;const mf=hasMkt?.5:1;
+ const items=[],inj=injuries(g,sum);const seen=new Set();
+ const add=(side,n,why,eff,p)=>{items.push({side,n,why,eff,p});};
+ // players missing because they aren't in the confirmed lineup (soccer: regular starters left out)
+ const miss=[...inj];
+ if(L&&!L.predicted&&soc){let P=null;try{P=await LU.predictData(g,sum);}catch(e){}if(P)for(const t of P.teams){const lt=L.teams.find(x=>x.side===t.side);if(!lt)continue;const xi=new Set(lt.ps.map(p=>nm(p.n)));for(const b of t.base||[])if(!xi.has(nm(b.n))&&!miss.find(m=>nm(m.n)===nm(b.n)))miss.push({side:t.side,id:b.id,n:b.n,pos:b.pos,status:'Not in starting XI',p:1,rot:1});}}
+ if(soc){let lh=ctx.lamH,la=ctx.lamA;const b0=poisRes(lh,la);const lgp=(X.path||'').split('/')[1];let mulH=1,mulA=1,defH=1,defA=1;
+  // only count real regulars: injured players need >=3 starts this season
+  await Promise.all(miss.filter(m=>m.id).map(m=>socStats(m.id,lgp)));
+  for(const m of miss){const s=SOCS[m.id];if(!m.rot&&(!s||s.starts<3))continue;const k=nm(m.n);if(seen.has(k))continue;seen.add(k);
+   const lam=m.side==='h'?lh:la,c=s?s.g+.7*s.a:0,att=Math.min(.3,.6*c/Math.max(lam,.6))*m.p*mf,d=dep(m.pos),def=(d===0?.08:d===1?.035:.012)*m.p*mf;
+   if(m.side==='h'){mulH*=1-att;defA*=1+def;}else{mulA*=1-att;defH*=1+def;}
+   const effPct=-(att*100),oppPct=def*100;add(m.side,m.n,m.status,`${att>.004?fmt(effPct,'%')+' goals':''}${att>.004&&def>.004?' · ':''}${def>.004?'opp. '+fmt(oppPct,'%'):''}`||'small',m.p);}
+  ctx.lamH=lh*mulH*defH;ctx.lamA=la*mulA*defA;
+  // props: drop players who won't start
+  if(L){const xi=new Set(L.teams.flatMap(t=>t.ps.map(p=>nm(p.n))));ctx.players=ctx.players.filter(p=>xi.has(nm(p.name))||!L.teams.length);}
+  ctx.players=ctx.players.filter(p=>!miss.find(m=>m.p>=.75&&nm(m.n)===nm(p.name)));
+  for(const p of ctx.players){if(p.kind==='soc2'){p.lam=p.side==='h'?ctx.lamH:ctx.lamA;p.opp=p.side==='h'?ctx.lamA:ctx.lamH;}}
+  const b1=poisRes(ctx.lamH,ctx.lamA);return ctx.imp={soc:1,items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:b0,after:b1,unit:'goals',ex:[[la,lh],[ctx.lamA,ctx.lamH]]};}
+ if(lg==='NBA'){const C=LCFG.NBA,sd=C.sd,b0=ncdf((ctx.mH-ctx.mA)/sd);let dA=0,dH=0;
+  await Promise.all(inj.filter(m=>m.id).map(m=>playerImp(m.id)));
+  for(const m of inj){const q=PLAYER[m.id];if(!q||!q.min||q.min<10)continue;const k=nm(m.n);if(seen.has(k))continue;seen.add(k);
+   const v=Math.max(.4,.55*Math.max(0,q.imp)*q.min/36+.04*q.ppg)*m.p*mf;if(m.side==='h'){dH-=.6*v;dA+=.4*v;}else{dA-=.6*v;dH+=.4*v;}
+   add(m.side,m.n,m.status,`${fmt(-v,'pts')} margin`,m.p);}
+  ctx.mA+=dA;ctx.mH+=dH;ctx.remA=ctx.mA*ctx.f;ctx.remH=ctx.mH*ctx.f;
+  const b1=ncdf((ctx.mH-ctx.mA)/sd);return ctx.imp={items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:[b0,0,1-b0],after:[b1,0,1-b1],unit:'pts',ex:[[ctx.mA-dA,ctx.mH-dH],[ctx.mA,ctx.mH]]};}
+ if(lg==='NHL'){const by=await nhlStats();let lh=ctx.lamH,la=ctx.lamA;const b0=poisRes(lh,la);let dH=0,dA=0;
+  for(const m of inj){const L2=(by&&by[String(m.side==='h'?X.hid:X.aid)])||[];const q=L2.find(p=>String(p.id)===String(m.id))||L2.find(p=>nm(p.n)===nm(m.n));if(!q||q.gp<3||q.pos==='G')continue;const k=nm(m.n);if(seen.has(k))continue;seen.add(k);
+   const v=.22*(q.g+q.a)/q.gp*m.p*mf;if(m.side==='h')dH-=v;else dA-=v;add(m.side,m.n,m.status,fmt(-v,'goals'),m.p);}
+  if(L&&by)for(const t of L.teams){const roster=by[String(t.side==='h'?X.hid:X.aid)]||[],gks=roster.filter(p=>p.pos==='G'&&p.sa>0).sort((p,q)=>q.gp-p.gp),start=t.G&&t.G[0];if(!start||!gks.length)continue;
+   const st=gks.find(p=>String(p.id)===String(start.id))||gks.find(p=>nm(p.n)===nm(start.n)),top=gks[0];if(!st||st.id===top.id)continue;
+   const d=Math.max(-.5,Math.min(.6,30*((top.sv/top.sa)-(st.sv/st.sa))))*mf;if(t.side==='h')dA+=d;else dH+=d;add(t.side,st.n,`starts in goal instead of ${top.n}`,`opp. ${fmt(d,'goals')}`,1);}
+  ctx.lamH=Math.max(.8,lh+dH);ctx.lamA=Math.max(.8,la+dA);const b1=ot(poisRes(ctx.lamH,ctx.lamA),ctx.lamH,ctx.lamA);
+  if(ctx.pl&&ctx.pl.length){const out=new Set(inj.filter(m=>m.p>=.75).map(m=>nm(m.n)));ctx.pl=ctx.pl.filter(p=>!out.has(nm(p.n)));if(L){const G=new Map(L.teams.map(t=>[t.side,t.G&&t.G[0]]));ctx.pl=ctx.pl.filter(p=>p.kind!=='g'||!G.get(p.side)||nm(G.get(p.side).n)===nm(p.n));}}
+  return ctx.imp={items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:ot(b0,lh,la),after:b1,unit:'goals',ex:[[la,lh],[ctx.lamA,ctx.lamH]]};}
+ if(lg==='MLB'){let lh=ctx.lamH,la=ctx.lamA;const lh0=lh,la0=la,b0=ot(poisRes(lh,la),lh,la);
+  if(L)for(const t of L.teams){const era=parseFloat(t.sp&&t.sp.era);if(!t.sp||!isFinite(era))continue;const mul=1+(Math.max(.78,Math.min(1.3,(.55*era+.45*4.2)/4.2))-1)*mf;if(t.side==='h')la*=mul;else lh*=mul;add(t.side,t.sp.n,`starting pitcher · ${era.toFixed(2)} ERA`,`opp. ${fmt((mul-1)*100,'%')} runs`,1);}
+  ctx.lamH=lh;ctx.lamA=la;return ctx.imp={items,mf,lineup:L?(L.predicted?'Predicted':'Official'):null,before:b0,after:ot(poisRes(lh,la),lh,la),unit:'runs',ex:[[la0,lh0],[la,lh]]};}
+ return null;};
+
+/* card shown under the match prediction */
+IMP.card=function(ctx,h,a){const I=ctx&&ctx.imp;if(!I)return '';const pc=x=>(x*100).toFixed(0)+'%',soc=!!I.soc;
+ const row=(lab,b,c)=>`<div class="ir"><span>${lab}</span><span class="iv"><s>${b}</s> → <b>${c}</b></span></div>`;
+ const its=I.items.slice().sort((x,y)=>y.p-x.p);
+ return `<div class="card msec impc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="ptitle" style="margin:0">Lineup & injury impact</h2>${I.lineup?`<span class="lu-badge ${I.lineup==='Official'?'ok':'pred'}">${I.lineup} lineup</span>`:''}</div>
+ <div class="hint" style="margin:4px 0 10px">The ${NSIM.toLocaleString()} simulations above already include these changes.${I.mf<1?' Betting lines already price part of this news, so the model applies half of each effect.':''}</div>
+ ${its.length?its.map(m=>`<div class="ii"><span class="ic ${m.p>=.75?'out':'q'}">${m.p>=.75?'✕':'?'}</span><span style="flex:1;min-width:0"><b>${m.n}</b><small>${m.side==='h'?h:a} · ${m.why}</small></span><span class="ie">${m.eff}</span></div>`).join(''):'<div class="hint" style="margin:0 0 8px">No injuries or lineup changes that move the numbers.</div>'}
+ <div class="ibox">${row(`${h} win`,pc(I.before[0]),pc(I.after[0]))}${soc?row('Draw',pc(I.before[1]),pc(I.after[1])):''}${row(`${a} win`,pc(I.before[2]),pc(I.after[2]))}${row('Projected score',`${a} ${I.ex[0][0].toFixed(1)}–${I.ex[0][1].toFixed(1)} ${h}`,`${I.ex[1][0].toFixed(1)}–${I.ex[1][1].toFixed(1)}`)}</div></div>`;};
+IMP.inject=function(ctx){try{if(!ctx||!ctx.imp)return;const mb=document.getElementById('mbody');if(!mb||mb.querySelector('.impc'))return;const first=mb.querySelector('.card');const html=IMP.card(ctx,ctx.h,ctx.a);if(first)first.insertAdjacentHTML('afterend',html);else mb.insertAdjacentHTML('afterbegin',html);}catch(e){}};
+const st=document.createElement('style');st.textContent=`.ii{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.ii small{display:block;color:var(--mut);font-size:11.5px}.ii b{font-size:13.5px}.ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:800 11px var(--body);flex:none}.ic.out{background:color-mix(in srgb,var(--bad) 22%,transparent);color:var(--bad)}.ic.q{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}.ie{font:700 12px var(--body);color:var(--mut);text-align:right;white-space:nowrap}
+.ibox{margin-top:10px;background:var(--surface2);border-radius:12px;padding:6px 12px}.ir{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}.ir:first-child{border-top:0}.iv s{color:var(--mut)}.iv b{color:var(--accent)}`;document.head.appendChild(st);
 })();
 
 </script>
