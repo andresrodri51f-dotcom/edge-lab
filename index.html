@@ -158,6 +158,10 @@ table.mt td{vertical-align:middle}
 .fcchip img{width:20px;height:20px;object-fit:contain;flex:none;background:#fff;border-radius:50%;padding:2px}
 .fcchip .globe{font-size:18px;line-height:1}
 #searchbox{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:45}
+.bookbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:8px;border-radius:12px;background:var(--surface2)}
+.bookbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px var(--body);padding:7px 11px;border-radius:10px;cursor:pointer}
+.bookbtn.on{border-color:transparent;background:var(--grad);color:#fff}
+.bdot{width:9px;height:9px;border-radius:50%;flex:none}
 .nlist{display:flex;flex-direction:column;gap:8px}
 .nitem{display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:var(--ink);padding:8px;border-radius:12px;border:1px solid var(--line);background:var(--surface2)}
 .nitem:hover{border-color:var(--line2)}
@@ -958,6 +962,9 @@ async function fetchProps(X){if(!X||!X.id||!X.path||SOCCER.includes(MATCH&&MATCH
  for(const g of groups.values())out.push({...g,kind:'ou'});
  MATCH.propsAt=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
  return out;}
+const BOOKS=[{k:'dk',n:'DraftKings',u:'https://sportsbook.draftkings.com',c:'#53d337'},{k:'fd',n:'FanDuel',u:'https://sportsbook.fanduel.com',c:'#1493ff'},{k:'mgm',n:'BetMGM',u:'https://sports.betmgm.com',c:'#bfa36b'},{k:'czr',n:'Caesars',u:'https://sportsbook.caesars.com',c:'#0f3d2e'},{k:'b365',n:'bet365',u:'https://www.bet365.com',c:'#027b5b'}];
+function getBook(){try{return localStorage.getItem('el_book')||'dk';}catch(e){return window._book||'dk';}}
+function setBook(k){try{localStorage.setItem('el_book',k);}catch(e){}window._book=k;if(MATCH&&MATCH.g)openKey(encodeURIComponent(MATCH.g[0]+'|'+MATCH.g[2]+'|'+MATCH.g[3]));}
 function openKey(k){k=decodeURIComponent(k);const i=GAMES.list.findIndex(g=>g[0]+'|'+g[2]+'|'+g[3]===k);if(i>=0)openMatch(i);}
 async function openMatch(idx){
  const g=GAMES.list[idx];if(!g)return;const [lg,st,a,h,as,hs,info,pr,note,proj,x]=g,X=x||{};
@@ -1236,9 +1243,14 @@ function renderMatch(ctx,R){
  const rowH=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td>${x.proj}</td><td>${x.range}</td></tr>`;
  const anyList=list.filter(x=>x.any).slice(0,24),mainList=list.filter(x=>!x.any);
  const propRows=mainList.slice(0,50).map(rowH),moreRows=mainList.slice(50).map(rowH);
- const anyHTML=anyList.length?`<div class="card msec"><h3>Anytime props · goals, assists, bookings, touchdowns, sacks</h3><div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Projection</th><th>80% range</th></tr></thead><tbody>${anyList.map(rowH).join('')}</tbody></table></div><div class="hint">Sorted by chance, highest first. Includes long shots down to about 8% (+1150).</div></div>`:'';
+ const bk=BOOKS.find(b=>b.k===getBook())||BOOKS[0];
+ const anyRow=x=>`<tr><td><b>${x.name}</b><div class="hint" style="margin:0">${x.team}${x.tag?' · '+x.tag:''}</div></td><td>${x.stat} <b>${x.label}</b></td>${pctCell(x.p)}<td>${amer(x.p)}</td><td><b style="color:var(--good)">${amer(x.p*.97)}</b></td></tr>`;
+ const anyHTML=anyList.length?`<div class="card msec"><h3>Anytime props · goals, assists, bookings, touchdowns, sacks</h3>
+  <div class="bookbar"><span class="hint" style="margin:0">Your sportsbook:</span>${BOOKS.map(b=>`<button class="bookbtn${b.k===bk.k?' on':''}" onclick="setBook('${b.k}')"><span class="bdot" style="background:${b.c}"></span>${b.n}</button>`).join('')}<a class="btn" style="padding:8px 14px;font-size:13px;margin-left:auto" href="${bk.u}" target="_blank" rel="noopener">Open ${bk.n} ↗</a></div>
+  <div class="tw" style="margin:0;box-shadow:none"><table class="mt"><thead><tr><th>Player</th><th>Prop</th><th>Chance</th><th>Fair odds</th><th>Bet at ${bk.n} if better than</th></tr></thead><tbody>${anyList.map(anyRow).join('')}</tbody></table></div>
+  <div class="hint">Sorted by chance. The free feed doesn’t carry ${bk.n}’s prices, so compare in the app: if ${bk.n} offers odds better than the green number, the bet has value (the green number already leaves about 3% room for the model’s error).</div></div>`:'';
   let dkProps='';
- if(MATCH&&MATCH.props&&MATCH.props.length&&ctx.st!=='live'){const rows=[];
+ if(false&&MATCH&&MATCH.props&&MATCH.props.length&&ctx.st!=='live'){const rows=[];
   for(const pr of MATCH.props){const o=R.P.find(z=>z.p.id&&String(z.p.id)===String(pr.id));if(!o)continue;const hh=o.h[pr.key];if(!hh)continue;const nm=o.p.name;
    if(pr.kind==='ou'){const pO=histGE(hh,Math.floor(pr.L)+1),io=impl(pr.over),iu=pr.under!=null?impl(pr.under):null;let nO=null,nU=null;if(io&&iu){nO=io/(io+iu);nU=iu/(io+iu);}else if(io)nO=io/1.045;
     rows.push(mkRow(SLAB[pr.key],`${nm} Over ${pr.L}`,pr.over||0,nO,pO,0,bl));if(pr.under!=null||pr.over==null)rows.push(mkRow(SLAB[pr.key],`${nm} Under ${pr.L}`,pr.under||0,nU,1-pO,0,bl));}
