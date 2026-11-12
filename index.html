@@ -1189,7 +1189,7 @@ function tennisList(){
    const setLine=hs.map((v,i)=>`${as[i]??0}-${v}`).join(' · ');
    const info=st==='up'?new Date(t).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):(c.status.type.shortDetail||'');
    out.push(['Tennis',st,an,hn,st==='up'?null:aw,st==='up'?null:hw,`${(c.round&&c.round.displayName)||''}${info?' · '+info:''}`,st==='up'?[50,50]:0,'',undefined,
-    {id:'T'+c.id,ten:1,date:c.date||e.date,tour:e.name,bo:(c.format&&c.format.regulation&&c.format.regulation.periods)||3,setLine,hwS:hw,awS:aw,aa:abbrOf(an),ha:abbrOf(hn)}]);}}
+    {id:'T'+c.id,ten:1,date:c.date||e.date,tour:e.name,bo:(/Australian Open|Roland|French Open|Wimbledon|US Open/i.test(e.name||'')&&/Men/i.test((gr.grouping&&gr.grouping.displayName)||''))?5:3,setLine,hwS:hw,awS:aw,aa:abbrOf(an),ha:abbrOf(hn)}]);}}
  return out;
 }
 function altCtx(g){
@@ -1225,7 +1225,7 @@ function renderAlt(ctx,R){
   pred.push(['Projected score',`${h} ${((ft+fm)/2).toFixed(1)} – ${((ft-fm)/2).toFixed(1)} ${a}`]);
   const L=ctx.line!=null?ctx.line:Math.round(ft-.5)+.5;let o=0,pu=0;for(let i=0;i<n;i++){const v=H[i]+A[i];if(v>L)o++;else if(v===L)pu++;}const po=o/(n-pu||1);
   pred.push([`Total ${unit} O/U ${L}${ctx.line!=null?' (DraftKings)':''}`,po>=.5?`Over${hint(pct0(po))}`:`Under${hint(pct0(1-po))}`]);
-  const pl=share((x,y)=>x-y>=2);pred.push([`${ctx.lg==='NHL'?'Puck':'Run'} line ${h} -1.5`,pl>=.5?`${h} covers${hint(pct0(pl))}`:`${a} +1.5 covers${hint(pct0(1-pl))}`]);
+  const fav=pH>=.5?h:a,dog=pH>=.5?a:h,pl=pH>=.5?share((x,y)=>x-y>=2):share((x,y)=>y-x>=2);pred.push([`${ctx.lg==='NHL'?'Puck':'Run'} line ${fav} -1.5`,pl>=.5?`${fav} covers${hint(pct0(pl))}`:`${dog} +1.5 covers${hint(pct0(1-pl))}`]);
   pred.push(['Most likely score',`${top[0][0].replace('-',' – ')}${hint(pct0(top[0][1]/n))}`]);
   pred.push([ctx.lg==='NHL'?'Goes to overtime':'Extra innings',pct0(R.ot)]);
   const mx=ctx.lg==='NHL'?6:9,M=[...Array(mx+1)].map(()=>new Array(mx+1).fill(0));for(let i=0;i<n;i++)M[Math.min(mx,H[i])][Math.min(mx,A[i])]++;let mm=0;for(const r of M)for(const c of r)mm=Math.max(mm,c);
