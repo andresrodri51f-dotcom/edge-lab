@@ -274,6 +274,7 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .pro-hero{text-align:center;padding:28px 18px}.pro-hero h2{font:800 34px/1 var(--display);text-transform:uppercase;margin:8px 0}.pro-price{font:800 52px/1 var(--display);color:var(--accent)}
 .pro-list{list-style:none;padding:0;margin:16px auto;max-width:360px;text-align:left}.pro-list li{padding:10px 0;border-top:1px solid var(--line)}.pro-list li::before{content:"✓  ";color:var(--accent);font-weight:800}
 .tvchip{font:600 11px var(--body);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}.gopen2{font:700 12px var(--body);color:var(--accent)}
+.lvn{background:var(--live);color:#fff;border-radius:99px;font:700 10px var(--body);padding:1px 6px;margin-left:2px}.cat.on .lvn{background:#04140b;color:var(--accent)}
 </style>
 
 </head>
@@ -828,8 +829,13 @@ function renderNav(){const nl=GAMES.list.filter(g=>g[1]==='live').length,b=(v,i,
  const pb=$('probtn');if(pb)pb.textContent=isPro()?'PRO ✓':'GET PRO';}
 let NAVON='games';
 function closeAll(){if(typeof MATCH!=='undefined'&&MATCH)closeMatch();try{closeSearch();}catch(e){}const pb=$('probox');if(pb)pb.style.display='none';document.body.style.overflow='';}
-function renderLiveAll(){const L=GAMES.list,lv=L.filter(g=>g[1]==='live');
- $('p-games').innerHTML=`<div style="padding:14px 0 6px"><h2 class="ptitle" style="margin:0">Live now</h2><div class="hint" style="margin:2px 0 0">${lv.length} game${lv.length===1?'':'s'} in play · scores every second</div></div>`+(lv.length?LGORDER.map(lg=>{const gs=lv.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${CICON[SOCCER.includes(lg)?'FC':lg]||''} ${LGNAME[lg]}</h2><span class="glg">${gs.length}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="card" style="text-align:center;padding:34px"><div style="font-size:30px">📡</div><b>No games live right now</b><div class="hint">Check the Games tab for today’s schedule.</div></div>');}
+let gLive='All';
+function renderLiveAll(){const L=GAMES.list,all=L.filter(g=>g[1]==='live'),cnt=c=>all.filter(g=>c==='All'||inSport(g,c)).length;
+ const lv=all.filter(g=>gLive==='All'||inSport(g,gLive));
+ const chips=`<div class="catbar"><div class="cats">${['All',...CATS].map(c=>`<button class="cat${gLive===c?' on':''}" onclick="gLive='${c}';renderGames()"><span class="ci">${c==='All'?'📡':CICON[c]||''}</span><span>${c}</span>${cnt(c)?` <span class="lvn">${cnt(c)}</span>`:''}</button>`).join('')}</div></div>`;
+ const nm=gLive==='All'?'':gLive+' ';
+ $('p-games').innerHTML=chips+`<div style="padding:12px 0 8px"><h2 class="ptitle" style="margin:0">Live now</h2><div class="hint" style="margin:2px 0 0">${lv.length} ${nm}game${lv.length===1?'':'s'} in play · scores every second</div></div>`+(lv.length?LGORDER.map(lg=>{const gs=lv.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${CICON[SOCCER.includes(lg)?'FC':lg]||''} ${LGNAME[lg]}</h2><span class="glg">${gs.length}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):`<div class="card" style="text-align:center;padding:34px"><div style="font-size:30px">📡</div><b>No live ${nm}games</b><div class="hint">There are no ${nm}games being played right now. Check the Games tab for the schedule.</div></div>`);}
+
 function openPro(){const pb=$('probox');pb.style.display='block';document.body.style.overflow='hidden';NAVON='pro';renderNav();
  pb.innerHTML=`<div class="mwrap"><div style="display:flex;justify-content:flex-end;padding:10px 0"><button class="hicon" onclick="NAVON='games';closeAll();renderNav()" aria-label="Close">✕</button></div>
  <div class="card pro-hero"><div style="font-size:34px">💎</div><h2>Edge Lab Pro</h2>${isPro()?`<div class="pro-price" style="font-size:30px">Active ✓</div><div class="hint">All predictions are unlocked on this device.</div>`:`<div class="pro-price">$25<span style="font-size:20px;color:var(--mut)">/month</span></div><div class="hint">Cancel anytime. Pay with Apple Pay or Google Pay.</div>`}
