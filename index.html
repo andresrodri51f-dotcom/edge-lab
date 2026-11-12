@@ -142,6 +142,10 @@ table.mt td{vertical-align:middle}
 .pbarcell span{display:block;height:100%;background:var(--accent)}
 .bookrow td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.fcsub{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.fcchip{border:0;background:none;color:var(--mut);font:600 13px var(--body);padding:7px 12px;border-radius:9px;cursor:pointer}
+.fcchip:hover{color:var(--ink);background:var(--surface2)}
+.fcchip.on{background:var(--ink);color:var(--surface)}
 .dstrip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:12px;scrollbar-width:thin}
 .dchip{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:92px;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-family:var(--body)}
 .dchip b{font-size:14px}.dchip span{font-size:11px;color:var(--mut)}
@@ -641,11 +645,21 @@ function runLive(){
   ${hist(M,-(spr||0),`Final home margin (${h} − ${a}) · ${n.toLocaleString()} sims from current score`,`${a} side`,`${h} side`)}`;
 }
 
-const CLUBS=['UCL','EPL','La Liga','MLS'],INTL=['Friendlies','UEFA NL','CONCACAF NL','AFCON Qual.'],SOCCER=[...CLUBS,...INTL];
-const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga',MLS:'MLS',Friendlies:'International Friendlies',MLB:'MLB',NHL:'NHL',Tennis:'Tennis (ATP & WTA)','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
-const LGORDER=['UCL','EPL','La Liga','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
-function inSport(g,s){return s==='All'||(s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
-const CATS=['All','FC','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
+const CLUBS=['UCL','EPL','La Liga','Serie A','Bundesliga','Ligue 1','MLS'],INTL=['Friendlies','UEFA NL','CONCACAF NL','AFCON Qual.'],SOCCER=[...CLUBS,...INTL];
+const LGNAME={NBA:'NBA',NFL:'NFL',EuroLeague:'EuroLeague',UCL:'UEFA Champions League',EPL:'Premier League','La Liga':'La Liga','Serie A':'Serie A',Bundesliga:'Bundesliga','Ligue 1':'Ligue 1',MLS:'MLS',Friendlies:'International Friendlies',MLB:'MLB',NHL:'NHL',Tennis:'Tennis (ATP & WTA)','UEFA NL':'UEFA Nations League','CONCACAF NL':'CONCACAF Nations League','AFCON Qual.':'Africa Cup of Nations Qualifying'};
+const LGORDER=['UCL','EPL','La Liga','Serie A','Bundesliga','Ligue 1','MLS','UEFA NL','CONCACAF NL','AFCON Qual.','Friendlies','NBA','MLB','NFL','NHL','Tennis','EuroLeague'];
+const BIGCLUB=/Real Madrid|Barcelona|Man(chester)? City|Liverpool|Arsenal|Man(chester)? United|Man Utd|Chelsea|Paris Saint|PSG|Paris SG|Bayern|Juventus|^Inter$|Internazionale|Inter Milan|AC Milan|^Milan$|Atl[eé]tico|Dortmund|Napoli|Tottenham|Inter Miami/i;
+const BIGNAT=/^(Argentina|Brazil|France|England|Spain|Germany|Portugal|Italy|Netherlands|Belgium|Croatia|United States|USA|Mexico|Uruguay|Colombia)$/i;
+function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
+ if(lg==='EuroLeague')return 'EuroLeague';
+ if(['NBA','NFL','NHL','MLB'].includes(lg)&&X.natTV)return 'National TV · '+X.natTV;
+ if(lg==='Tennis'){if(/Finals|Australian Open|Roland|Wimbledon|US Open/i.test(X.tour||''))return X.tour;if(/Semifinal|^Final/i.test(g[6]||''))return 'Late round';return '';}
+ if(CLUBS.includes(lg)){const ba=BIGCLUB.test(a),bh=BIGCLUB.test(h);if(ba&&bh)return 'Big clubs';if(lg==='UCL'&&(ba||bh))return 'Champions League · big club';return '';}
+ if(INTL.includes(lg)){const na=BIGNAT.test(a),nh=BIGNAT.test(h);if(na&&nh)return 'Top nations';if((na||nh)&&lg!=='Friendlies')return 'Top nation';return '';}
+ return '';}
+function inSport(g,s){return s==='All'||(s==='Special'?!!specialWhy(g):s==='FC'?SOCCER.includes(g[0]):g[0]===s);}
+const CATS=['All','FC','NBA','MLB','NFL','NHL','Tennis','Special'];
+const FCSUB=[['EPL','Premier League'],['La Liga','La Liga'],['Serie A','Serie A'],['Bundesliga','Bundesliga'],['Ligue 1','Ligue 1'],['INTL','International'],['UCL','Champions League'],['MLS','MLS']];let gFC='EPL';
 const SNAP=GAMES.list.slice();
 let gSport='All',gStat='All',FEED_ON=false;
 function hashColor(s){let h=0;for(const ch of s)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 36%)`;}
@@ -659,6 +673,7 @@ function gameCard(g,idx){
  const rows=soc?[[h,hs,1,X.ha,X.ch],[a,as,0,X.aa,X.ca]]:[[a,as,0,X.aa,X.ca],[h,hs,1,X.ha,X.ch]];
  const win=(st!=='up'&&as!=null)?(as>hs?a:hs>as?h:null):null;
  const pill=st==='live'?'<span class="pill livep">LIVE</span>':st==='final'?'<span class="pill pass">FINAL</span>':'<span class="pill lean">UPCOMING</span>';
+ const why=specialWhy(g);
  let prob='';
  if(pr){const pa=pr[0],ph=pr[1],pd=pr[2]||0;
   const segs=soc?[[h,ph,'var(--accent)'],['Draw',pd,'var(--line2)'],[a,pa,'var(--blue)']]:[[a,pa,'var(--blue)'],[h,ph,'var(--accent)']];
@@ -667,7 +682,7 @@ function gameCard(g,idx){
  const href='https://www.realapp.com/'+({NBA:'nba',NFL:'nfl',NHL:'nhl',MLB:'mlb',Tennis:'tennis',EuroLeague:'basketball'}[lg]||'soccer');
  const gkey=encodeURIComponent(lg+'|'+a+'|'+h);
  return `<div class="card gcard ${st}" role="button" tabindex="0" onclick="openKey('${gkey}')" onkeydown="if(event.key==='Enter')openKey('${gkey}')" aria-label="Open ${a} vs ${h}">
-  <div class="ghead"><span class="glg">${lg}</span>${pill}</div>
+  <div class="ghead"><span class="glg">${lg}${why?` <span style="color:var(--warn)" title="${why}">★</span>`:''}</span>${pill}</div>${why&&gSport==='Special'?`<div class="hint" style="margin:-6px 0 6px;color:var(--warn)">★ ${why}</div>`:''}
   ${rows.map(r=>`<div class="trow ${win?(win===r[0]?'win':'lose'):''}"><span class="tname">${badgeHTML(r[0],r[3],r[4])}<b title="${r[0]}">${r[0]}</b>${soc&&r[2]?'<span class="glg" style="font-size:10px">Home</span>':''}</span><span class="score">${r[1]==null?'':r[1]}</span></div>`).join('')}
   <div class="ginfo">${info}</div>${line}${(()=>{if(st!=='live')return '';const ll=liveLine(lg,X,as,hs);return ll?`<div class="gline" style="color:var(--live);font-weight:600">Live O/U ${ll.L} · projected total ${ll.proj.toFixed(1)}${ll.pre!=null?` · pregame ${ll.pre}`:''}</div>`:'';})()}${prob}
   ${note?`<div class="gpick">${note}</div>`:''}
@@ -680,7 +695,7 @@ function renderNext(){
  const up=L.filter(g=>g[1]==='up'&&inSport(g,gNext)).sort((p,q)=>dt(p)-dt(q));
  const days=new Map();for(const g of up){const d=dt(g)?new Date(dt(g)).toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}):'Upcoming';if(!days.has(d))days.set(d,[]);days.get(d).push(g);}
  const chip=(on,lab)=>`<button class="btn ghost chip${on?' on':''}" onclick="gNext='${lab}';renderNext()">${lab}</button>`;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${CATS.map(s=>chip(gNext===s,s)).join('')}</div>
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${CATS.map(s=>chip(gNext===s,s==='Special'?'★ Special':s)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">Upcoming games for the next few days (NBA next 3 days, this week’s NFL, next 2 weeks of EuroLeague and soccer), soonest first. Tap any game for its 100,000-simulation match page and DraftKings props.</div>
  ${up.length?[...days.entries()].map(([d,gs])=>`<section class="lgsec"><div class="lghead"><h2>${d}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`).join(''):'<div class="hint">No upcoming games found yet. They appear once the live feed loads.</div>'}`;
 }
@@ -689,14 +704,15 @@ function dayKey(g){const d=g[10]&&g[10].date?new Date(g[10].date):new Date();ret
 function dayLabel(k){const [y,m,d]=k.split('-').map(Number),dt=new Date(y,m-1,d),t0=new Date();t0.setHours(0,0,0,0);const dd=Math.round((dt-t0)/864e5);
  const s=dt.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});return dd===0?'Today':dd===1?'Tomorrow':dd===-1?'Yesterday':s;}
 function renderByDate(){
- const L=GAMES.list,fs=L.filter(g=>inSport(g,gSport));
+ const L=GAMES.list,fs=L.filter(g=>inSport(g,gSport)&&(gSport!=='FC'||(gFC==='INTL'?INTL.includes(g[0]):g[0]===gFC)));
  const cnt=new Map();for(const g of fs){const k=dayKey(g);cnt.set(k,(cnt.get(k)||0)+1);}const keys=[...cnt.keys()].sort();
  const today=dayKey([0,0,0,0,0,0,0,0,0,0,{date:new Date().toISOString()}]);
  if(!gDate||!cnt.has(gDate))gDate=cnt.has(today)?today:(keys.find(k=>k>today)||keys[keys.length-1]||today);
  const sports=CATS,chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;
  const day=fs.filter(g=>dayKey(g)===gDate),dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0,order={live:0,up:1,final:2};day.sort((p,q)=>order[p[1]]-order[q[1]]||dt(p)-dt(q));
- const lgs=gSport==='FC'?SOCCER:[gSport],nm=LGNAME;
- $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
+ const lgs=gSport==='FC'?(gFC==='INTL'?INTL:[gFC]):gSport==='Special'?LGORDER:[gSport],nm=LGNAME;
+ $('p-games').innerHTML=viewToggle()+`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${sports.map(s=>chip(gSport===s,s==="Special"?"★ Special":s,`gSport='${s}';gDate=null;renderGames()`)).join('')}</div>
+ ${gSport==='FC'?`<div class="fcsub">${FCSUB.map(([k,l])=>`<button class="fcchip${gFC===k?' on':''}" onclick="gFC='${k}';gDate=null;renderGames()">${l}</button>`).join('')}</div>`:''}${gSport==='Special'?'<div class="hint" style="margin:-4px 0 10px">Picked automatically: every EuroLeague game, national-TV NBA/NFL/NHL/MLB games, big-club and top-nation soccer, and tennis Finals, Slams and late rounds.</div>':''}
  <div class="dstrip">${keys.map(k=>`<button class="dchip${k===gDate?' on':''}${k===today?' today':''}" onclick="gDate='${k}';renderGames()"><b>${dayLabel(k)}</b><span>${cnt.get(k)} ${cnt.get(k)===1?'game':'games'}</span></button>`).join('')||'<span class="hint">No dates yet.</span>'}</div>
  ${day.length?lgs.map(lg=>{const gs=day.filter(g=>g[0]===lg);if(!gs.length)return '';return `<section class="lgsec"><div class="lghead"><h2>${nm[lg]} · ${dayLabel(gDate)}</h2><span class="glg">${gs.length} ${gs.length===1?'game':'games'}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games on this date.</div>'}`;
  const on=document.querySelector('.dchip.on');if(on&&!renderByDate.scrolled){on.scrollIntoView({inline:'center',block:'nearest'});renderByDate.scrolled=1;}
@@ -709,13 +725,13 @@ function renderGames(){
  const f=L.filter(g=>inSport(g,gSport)&&(gStat==='All'||g[1]===gStat));
  const order={live:0,up:1,final:2},dt=g=>g[10]&&g[10].date?Date.parse(g[10].date):0;f.sort((p,q)=>order[p[1]]-order[q[1]]||(p[1]==='final'?dt(q)-dt(p):dt(p)-dt(q)));
  const chip=(on,lab,fn)=>`<button class="btn ghost chip${on?' on':''}" onclick="${fn}">${lab}</button>`;renderByDate.scrolled=0;
- $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">14</div><div class="s">FC · NBA · MLB · NFL · NHL · Tennis · EuroLeague</div></div></div>
- <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
+ $('p-games').innerHTML=viewToggle()+`<div class="kpis"><div class="kpi"><div class="l">Live now</div><div class="v" style="color:var(--live)">${cnt('live')}</div><div class="s">${GAMES.asof}</div></div><div class="kpi"><div class="l">Final</div><div class="v">${cnt('final')}</div><div class="s">recent results</div></div><div class="kpi"><div class="l">Upcoming</div><div class="v">${cnt('up')}</div><div class="s">with win chances</div></div><div class="kpi"><div class="l">Leagues</div><div class="v">17</div><div class="s">FC · NBA · MLB · NFL · NHL · Tennis · EuroLeague</div></div></div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">${sports.map(s=>chip(gSport===s,s==='Special'?'★ Special':s,`gSport='${s}';gDate=null;renderGames()`)).join('')}<span style="width:1px;height:22px;background:var(--line);margin:0 6px"></span>${stats.map(([k,l])=>chip(gStat===k,l,`gStat='${k}';renderGames()`)).join('')}</div>
  <div class="hint" style="margin-bottom:14px">${FEED_ON?'Live games update every second from ESPN’s free scoreboard. Soccer shows the last 7 days, live matches and the next 2 weeks.':'Saved snapshot. Open the downloaded Edge Lab file in your browser for scores that update on their own.'} Tap any game to open 100,000 simulations: results, spreads, totals, goals and player props.</div>
  ${f.length?LGORDER.map(lg=>{const gs=f.filter(g=>g[0]===lg);if(!gs.length)return '';const nm=LGNAME[lg];const lv=gs.filter(g=>g[1]==='live').length;return `<section class="lgsec"><div class="lghead"><h2>${nm}</h2><span class="glg">${gs.length} games${lv?` · <span style="color:var(--live)">${lv} live</span>`:''}</span></div><div class="ggrid">${gs.map(g=>gameCard(g,L.indexOf(g))).join('')}</div></section>`;}).join(''):'<div class="hint">No games match this filter.</div>'}`;
 }
 /* ---------- free live feed (ESPN public scoreboard; works when opened as a file or on a normal website) ---------- */
-const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['NHL','hockey/nhl'],['MLB','baseball/mlb'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['MLS','soccer/usa.1'],['Friendlies','soccer/fifa.friendly'],['UEFA NL','soccer/uefa.nations'],['CONCACAF NL','soccer/concacaf.nations.league'],['AFCON Qual.','soccer/caf.nations_qual']];
+const FEEDS=[['NBA','basketball/nba'],['NFL','football/nfl'],['NHL','hockey/nhl'],['MLB','baseball/mlb'],['UCL','soccer/uefa.champions'],['EPL','soccer/eng.1'],['La Liga','soccer/esp.1'],['Serie A','soccer/ita.1'],['Bundesliga','soccer/ger.1'],['Ligue 1','soccer/fra.1'],['MLS','soccer/usa.1'],['Friendlies','soccer/fifa.friendly'],['UEFA NL','soccer/uefa.nations'],['CONCACAF NL','soccer/concacaf.nations.league'],['AFCON Qual.','soccer/caf.nations_qual']];
 function setFeed(on,txt){const el=$('feed');if(!el)return;el.classList.toggle('on',on);$('feedtxt').textContent=txt;}
 const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=1000;
 function rate(){return 1000;}
@@ -783,7 +799,7 @@ function buildList(){
    if(st==='live'&&total==null)needLine(lg,p,e.id);
    const sn=SNAP.find(g=>g[0]===lg&&g[2]===a&&g[3]===h&&g[1]!=='final');
    list.push([lg,st,a,h,st==='up'?null:+A.score,st==='up'?null:+H.score,info,pr||(sn&&sn[1]===st?sn[7]:0),sn?sn[8]:'',sn?sn[9]:undefined,
-    {id:e.id,path:p,date:e.date,det,pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
+    {id:e.id,path:p,date:e.date,det,natTV:((c.geoBroadcasts||[]).filter(b=>b.market&&b.market.type==='National'&&b.media&&!/League Pass|NBA TV|NHL Network|MLB Network|NFL Network/i.test(b.media.shortName||'')).map(b=>b.media.shortName)[0])||'',pH:(lg==='NHL'||lg==='MLB')&&typeof pHml!=='undefined'?pHml:undefined,aid:A.team.id,hid:H.team.id,recA:((A.records||[])[0]||{}).summary,recH:((H.records||[])[0]||{}).summary,ca:A.team.color,ch:H.team.color,aa:A.team.abbreviation,ha:H.team.abbreviation,spread,total,period:e.status.period,clock:e.status.displayClock}]);}}
  return list.concat(elList(),tennisList());
 }
 async function pullFeed(){
