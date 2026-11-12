@@ -2346,6 +2346,7 @@ const css=`
 #psheet .bd{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
 #psheet .sh{position:absolute;left:0;right:0;bottom:0;max-height:82vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--line2);padding:10px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .34s cubic-bezier(.2,.85,.25,1);max-width:640px;margin:0 auto}
 #psheet.on .bd{opacity:1}#psheet.on .sh{transform:translateY(0)}
+#psheet .psec{margin-top:16px}#psheet .pst{font:800 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:8px;display:flex;align-items:center;gap:6px}.lvdot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:blink 1.2s infinite}.stg{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}.stg div{background:var(--surface2);border-radius:10px;padding:8px 4px;text-align:center}.stg b{display:block;font:800 18px var(--display)}.stg span{font:700 10px var(--body);color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
 #psheet .grab{width:42px;height:5px;border-radius:99px;background:var(--line2);margin:0 auto 12px}
 .ph{display:flex;gap:14px;align-items:center}.ph .face{width:72px;height:72px}.ph b{font:800 24px/1.05 var(--display);text-transform:uppercase}
 .pp{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
@@ -2545,14 +2546,32 @@ LU.team=function(s){TEAM=s;const c=$l('lucard');if(c){c.innerHTML=luBody();c.ani
 function sheet(){let s=$l('psheet');if(!s){s=document.createElement('div');s.id='psheet';s.innerHTML='<div class="bd" onclick="LU.close()"></div><div class="sh" role="dialog" aria-modal="true"></div>';document.body.appendChild(s);}return s;}
 LU.close=function(){const s=$l('psheet');if(!s)return;s.classList.remove('on');setTimeout(()=>{if(!s.classList.contains('on'))s.style.display='none';},340);};
 const normN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
-LU.open=function(k){const p=REG[k];if(!p)return;const s=sheet(),sh=s.querySelector('.sh'),g=CUR&&CUR.g,team=CUR&&CUR.L.teams.find(t=>t.side===p.side);
+function gameStats(p){const sum=MATCH&&MATCH.sum;if(!sum||!p)return null;const id=String(p.id||''),nn=normN(p.n),out=[];
+ for(const r of sum.rosters||[])for(const e of r.roster||[]){if(String(e.athlete&&e.athlete.id)!==id&&normN(e.athlete&&e.athlete.displayName)!==nn)continue;const S={};for(const x of e.stats||[])S[x.name]=x.displayValue;
+  const want=[['totalGoals','Goals'],['goalAssists','Assists'],['totalShots','Shots'],['shotsOnTarget','On target'],['foulsCommitted','Fouls'],['foulsSuffered','Fouled'],['offsides','Offsides'],['yellowCards','Yellow'],['redCards','Red'],['saves','Saves'],['goalsConceded','Conceded']];
+  for(const [k,l] of want)if(S[k]!=null&&!(k==='saves'&&!/^(G|GK)$/.test(p.pos))&&!(k==='goalsConceded'&&!/^(G|GK)$/.test(p.pos)))out.push([l,S[k]]);if(out.length)return out;}
+ for(const tp of (sum.boxscore&&sum.boxscore.players)||[])for(const c of tp.statistics||[]){const L=c.labels||c.names||c.keys||[];for(const at of c.athletes||[]){if(String(at.athlete&&at.athlete.id)!==id&&normN(at.athlete&&at.athlete.displayName)!==nn)continue;(at.stats||[]).forEach((v,i)=>{if(L[i]&&out.length<12&&!out.find(o=>o[0]===L[i]))out.push([L[i],v]);});}}
+ return out.length?out:null;}
+const SEAS={};
+async function seasonStats(p){const X=(CUR&&CUR.g&&CUR.g[10])||{},path=X.path;if(!p.id||!path)return null;const k=path+'|'+p.id;if(k in SEAS)return SEAS[k];
+ let res=null;try{const d=await getJSON(`https://site.web.api.espn.com/apis/common/v3/sports/${path}/athletes/${p.id}/overview`);const s=d&&d.statistics;if(s&&s.labels&&s.splits&&s.splits.length){
+  if(path.startsWith('soccer')){const tot=s.labels.map(()=>0);for(const sp of s.splits)sp.stats.forEach((v,i)=>{tot[i]+=parseFloat(String(v).replace(/,/g,''))||0;});res={title:'This season · all competitions',rows:s.labels.map((l,i)=>[l,String(tot[i])])};}
+  else{const sp=s.splits.find(x=>/regular|season/i.test(x.displayName||''))||s.splits[0];res={title:sp.displayName||'This season',rows:s.labels.map((l,i)=>[l,sp.stats[i]])};}}}catch(e){}
+ return SEAS[k]=res;}
+const tiles=rows=>`<div class="stg">${rows.map(([l,v])=>`<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
+LU.open=function(k){const p=REG[k];if(!p)return;const s=sheet(),sh=s.querySelector('.sh'),g=CUR&&CUR.g,team=CUR&&CUR.L.teams.find(t=>t.side===p.side),st=g&&g[1];
  const head=`<div class="grab"></div><div class="ph">${faceHTML(p.hs||'',p.n)}<div style="flex:1"><b>${esc(p.n)}</b><div class="hint" style="margin:2px 0 0">${p.j?'#'+esc(p.j)+' · ':''}${esc(p.pos||'')}${team?' · '+esc(team.name):''}</div></div><button class="hicon" onclick="LU.close()" aria-label="Close">✕</button></div>`;
- let body='';
- if(!isPro()){body=`<div class="card" style="margin-top:14px;text-align:center;padding:22px"><div style="font-size:30px">🔒</div><b style="font:800 20px var(--display);text-transform:uppercase">Player props are Pro</b><div class="hint">See this player’s simulated lines and chances for every prop.</div><button class="paybtn" style="margin-top:10px" onclick="LU.close();openPro()">Unlock · ${PRO_PRICE}</button></div>`;}
+ const gs=(st==='live'||st==='final')?gameStats(p):null;
+ const live=gs?`<div class="psec"><div class="pst">${st==='live'?'<span class="lvdot"></span>Live · this game':'This game'}</div>${tiles(gs)}</div>`:'';
+ const seas=`<div class="psec" id="pseas"><div class="pst">Season stats</div><div class="hint" style="margin:0">Loading…</div></div>`;
+ let model='';
+ if(!isPro()){model=`<div class="psec"><div class="pst">Model prediction</div><div class="card" style="text-align:center;padding:18px;margin:0"><div style="font-size:26px">🔒</div><b style="font:800 18px var(--display);text-transform:uppercase">Player props are Pro</b><div class="hint">See this player’s simulated lines and the chance of hitting each one.</div><button class="paybtn" style="margin-top:10px" onclick="LU.close();openPro()">Unlock · ${PRO_PRICE}</button></div></div>`;}
  else{const parts=String(p.n).split(' '),ini=normN(parts[0]).charAt(0),ln=normN(parts.slice(1).join(' ')),nn=normN(p.n),same=x=>{const q=String(x.name||'').split(' '),xl=normN(q.slice(1).join(' ')),xi=normN(q[0]).charAt(0);return normN(x.name)===nn||(xl&&xl===ln&&xi===ini);},mine=(window.PPROPS||[]).filter(same).sort((a,b)=>b.p-a.p);
-  if(!mine.length)body=`<div class="card" style="margin-top:14px;text-align:center;padding:20px"><b>No props for this player yet</b><div class="hint">${window.PPROPS?'The model builds props for each team’s main players. This player isn’t one of them for this game.':'Props are still being simulated. Try again in a moment.'}</div></div>`;
-  else body=`<div style="margin-top:12px">${mine.slice(0,14).map(x=>`<div class="pp"><div><b>${esc(x.stat)}</b> ${esc(x.label)}<div class="hint" style="margin:0">Projection ${esc(x.proj)}</div><div class="bar"><span data-w="${(x.p*100).toFixed(1)}"></span></div></div><b class="c">${x.p>=.995?'Hit ✓':(x.p*100).toFixed(0)+'%'}</b></div>`).join('')}</div><div class="hint">${NSIM.toLocaleString()} simulations · chance of hitting each line.</div>`;}
- sh.innerHTML=head+body;s.style.display='block';requestAnimationFrame(()=>{requestAnimationFrame(()=>{s.classList.add('on');sh.querySelectorAll('.bar span').forEach(b=>b.style.width=b.dataset.w+'%');});});};
+  model=`<div class="psec"><div class="pst">Model prediction${st==='live'?' · rest of the game':''}</div>${!mine.length?`<div class="hint" style="margin:0">${window.PPROPS?'The model builds props for each team’s main players. This player isn’t one of them for this game.':'Props are still being simulated. Try again in a moment.'}</div>`:
+  mine.slice(0,14).map(x=>`<div class="pp"><div><b>${esc(x.stat)}</b> ${esc(x.label)}<div class="hint" style="margin:0">Projection ${esc(x.proj)}</div><div class="bar"><span data-w="${(x.p*100).toFixed(1)}"></span></div></div><b class="c">${x.p>=.995?'Hit ✓':(x.p*100).toFixed(0)+'%'}</b></div>`).join('')+`<div class="hint">${NSIM.toLocaleString()} simulations · chance of hitting each line.</div>`}</div>`;}
+ sh.innerHTML=head+live+seas+model;s.style.display='block';sh.scrollTop=0;
+ requestAnimationFrame(()=>{requestAnimationFrame(()=>{s.classList.add('on');sh.querySelectorAll('.bar span').forEach(b=>b.style.width=b.dataset.w+'%');});});
+ const myK=k;LU._open=k;seasonStats(p).then(r=>{if(LU._open!==myK)return;const el=$l('pseas');if(!el)return;el.innerHTML=`<div class="pst">${esc(r?r.title:'Season stats')}</div>${r?tiles(r.rows.slice(0,12)):'<div class="hint" style="margin:0">No season stats available for this player.</div>'}`;el.animate&&el.animate([{opacity:0},{opacity:1}],{duration:250});});};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')LU.close();});
 })();
 
