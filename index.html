@@ -2351,7 +2351,7 @@ const css=`
 /* ---- motion ---- */
 @keyframes ovIn{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-#matchbox,#searchbox,#probox,#mgbox{animation:ovIn .34s cubic-bezier(.2,.8,.2,1)}
+.ovin{animation:ovIn .34s cubic-bezier(.2,.8,.2,1)}
 body.ux #p-games>*,body.ux #mbody>*,body.ux #minfo>*,body.ux .mgw>*,body.ux #reveal>*{animation:fadeUp .38s cubic-bezier(.2,.8,.2,1) both}
 body.ux #p-games>*:nth-child(2),body.ux #minfo>*:nth-child(2),body.ux .mgw>*:nth-child(2),body.ux #mbody>*:nth-child(2){animation-delay:.04s}
 body.ux #p-games>*:nth-child(3),body.ux #minfo>*:nth-child(3),body.ux .mgw>*:nth-child(3),body.ux #mbody>*:nth-child(3){animation-delay:.08s}
@@ -2363,6 +2363,8 @@ button:active,.grow:active,.mgcard:active,a.btn:active{transform:scale(.97)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}`;
 const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 // enable entrance animations for ~1s after any tap (so live 1-second refreshes don't flicker)
+const ovObs=new MutationObserver(ms=>{for(const m of ms){const el=m.target;if(el.style.display==='block'&&!el._shown){el._shown=1;el.classList.add('ovin');clearTimeout(el._ovT);el._ovT=setTimeout(()=>el.classList.remove('ovin'),380);}else if(el.style.display!=='block')el._shown=0;}});
+const watchOv=()=>['matchbox','searchbox','probox','mgbox'].forEach(id=>{const el=$l(id);if(el&&!el._obs){el._obs=1;ovObs.observe(el,{attributes:true,attributeFilter:['style']});}});watchOv();setTimeout(watchOv,1500);
 let uxT=null;document.addEventListener('click',()=>{document.body.classList.add('ux');clearTimeout(uxT);uxT=setTimeout(()=>document.body.classList.remove('ux'),1100);},true);
 
 /* ---------- field backgrounds ---------- */
@@ -2421,7 +2423,7 @@ function luBody(){if(!CUR)return '';const {g,L}=CUR;REG=[];const A=L.teams.find(
   rA.forEach((row,ri)=>{const y=6+ri*(62/ (rA.length))*1.0;row.forEach((p,ci)=>{pins+=plBtn(p,100-(ci+1)*100/(row.length+1),Math.min(46,7+ri*(40/(rA.length-1))),A.col,'a');});});
   rH.forEach((row,ri)=>{row.forEach((p,ci)=>{pins+=plBtn(p,(ci+1)*100/(row.length+1),Math.max(54,93-ri*(40/(rH.length-1))),H.col,'h');});});
   const bench=t=>t.bench&&t.bench.length?`<div class="lu-line">${esc(t.name)} bench</div><div class="lu-chips">${t.bench.map(p=>`<button onclick="LU.open(${LU.reg(p,t.side)})">${esc(p.j)} ${esc(last(p.n))}</button>`).join('')}</div>`:'';
-  return title+`<div class="lu-form"><span>${esc(A.name)} · ${esc(A.form)}</span><span>${esc(H.name)} · ${esc(H.form)}</span></div><div class="field" style="aspect-ratio:100/178">${BG.soccer}${pins}</div>${bench(A)}${bench(H)}`;}
+  return title+`<div class="lu-form"><span>${esc(A.name)} · ${esc(A.form)}</span><span>${esc(H.name)} · ${esc(H.form)}</span></div><div class="field" style="aspect-ratio:100/170;max-width:440px">${BG.soccer}${pins}</div>${bench(A)}${bench(H)}`;}
  const T=L.teams.find(t=>t.side===TEAM)||A;
  if(L.kind==='nba'){const spots=[[50,74],[20,52],[80,52],[33,25],[67,25]];const ord=T.ps.slice().sort((p,q)=>'GFC'.indexOf((p.pos||'F')[0])-'GFC'.indexOf((q.pos||'F')[0]));
   const pins=ord.map((p,i)=>plBtn(p,spots[i][0],spots[i][1],T.col,T.side)).join('');
