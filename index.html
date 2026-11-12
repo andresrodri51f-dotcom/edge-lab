@@ -1041,6 +1041,7 @@ function renderMatch(ctx,R){
   for(const [k,hh] of Object.entries(o.h)){let tot=0,mean=0;for(let i=0;i<hh.length;i++){tot+=hh[i];mean+=i*hh[i];}mean/=tot||1;const lo=histQ(hh,.1),hi=histQ(hh,.9),cnt=k==='td'||k==='goals';
    const base={name:p.name,team:tn,tag:p.tag,stat:SLAB[k],proj:cnt?'—':mean.toFixed(1),range:cnt?'—':lo+'–'+hi};
    if(cnt){[[1,k==='td'?'Anytime TD':'Anytime goal'],[2,k==='td'?'2+ TDs':'2+ goals']].forEach(([m,l])=>items.push({...base,label:l,p:histGE(hh,m)}));continue;}
+   if(mean<1.5)continue;
    const L=Math.max(.5,Math.floor(mean)+.5),pO=histGE(hh,Math.ceil(L));
    items.push({...base,label:`Over ${L}`,p:pO},{...base,label:`Under ${L}`,p:1-pO});
    for(const m of (MILE[k]||[]))items.push({...base,label:`${m}+`,p:histGE(hh,m)});}}
