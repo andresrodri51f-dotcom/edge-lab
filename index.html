@@ -2049,7 +2049,7 @@ function season(){const c=C.club,yr=2026+C.seasons.length;
  // growth
  const age=C.age,room=C.pot-C.ovr;let d=age<21?rnd(1.5,5):age<25?rnd(.5,3.5):age<29?rnd(-.5,1.5):age<32?rnd(-2,.5):rnd(-4,-.5);
  if(age<29)d*=clamp(room/12,.15,1.3);
- const playShare=clamp(.55+(C.ovr-c.s)*.05+rnd(-.12,.12),.08,.97);if(playShare>.6&&age<24)d+=.8;if(C.focus==='physical'&&age<25)d+=.6;
+ const playShare=clamp(.62+(C.ovr-c.s)*.035+rnd(-.1,.1),.1,.97);if(playShare>.6&&age<24)d+=.8;if(C.focus==='physical'&&age<25)d+=.6;
  let inj=Math.random()<(C.focus==='physical'?.06:.11)+(age>31?.06:0);const injWeeks=inj?ri(4,26):0;
  C.ovr=clamp(Math.round(C.ovr+d),45,99);
  const apps=Math.max(0,Math.round(46*playShare*(1-injWeeks/40)));
@@ -2072,6 +2072,7 @@ function season(){const c=C.club,yr=2026+C.seasons.length;
  C.seasons.push({yr:`${yr}/${String(yr+1).slice(2)}`,club:c,ovr:C.ovr,apps,g,a,cs,rt,tr,inj:injWeeks});
  if(injWeeks>12)C.events.push(`${age}: serious injury, out ${injWeeks} weeks`);
  if(C.loanLeft){C.loanLeft--;if(!C.loanLeft){C.club=C.loan;C.loan=null;}}
+ if(!C.loanLeft&&C.age>=22&&C.ovr<c.s-11&&Math.random()<.6){const nc=pick(ALLCLUBS.filter(x=>Math.abs(x.s-C.ovr)<5&&x.n!==c.n))||c;if(nc!==c){C.events.push(`${C.age}: released by ${c.n}`);C.club=nc;}}
  C.age++;if(C.age>=39||(C.age>=36&&C.ovr<68&&Math.random()<.5))C.retired=true;}
 function careerEnd(){const T=C.trophies,tt=Object.values(T).reduce((a,b)=>a+b,0),peak=Math.max(...C.seasons.map(s=>s.ovr)),clubs=[...new Set(C.seasons.map(s=>s.club.n))];
  const score=peak*1.4+T.League*4+T['Champions League']*9+T['World Cup']*14+T['Copa/Euro']*8+T["Ballon d'Or"]*16+T.Cup*1.5+(C.pos==='GK'?(C.cs||0)/12:(C.goals+C.assists)/14);
