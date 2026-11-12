@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0a0c0f">
 <title>Edge Lab</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Edge Lab"><meta name="description" content="Live scores, 100,000-simulation predictions, picks and player cards.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22%3E%3Cdefs%3E%3ClinearGradient id=%22lg1%22 x1=%220%22 y1=%221%22 x2=%221%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22#1fdc78%22/%3E%3Cstop offset=%221%22 stop-color=%22#12b8ff%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x=%221%22 y=%221%22 width=%2246%22 height=%2246%22 rx=%2213%22 fill=%22#0f1714%22 stroke=%22url(#lg1)%22 stroke-width=%222%22/%3E%3Crect x=%2211%22 y=%2227%22 width=%226%22 height=%2210%22 rx=%222%22 fill=%22#1fdc78%22 opacity=%22.45%22/%3E%3Crect x=%2221%22 y=%2221%22 width=%226%22 height=%2216%22 rx=%222%22 fill=%22#1fdc78%22 opacity=%22.7%22/%3E%3Crect x=%2231%22 y=%2214%22 width=%226%22 height=%2223%22 rx=%222%22 fill=%22url(#lg1)%22/%3E%3Cpath d=%22M10 22 L20 15 L26 18 L37 9%22 fill=%22none%22 stroke=%22#12b8ff%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M32 9 H37 V14%22 fill=%22none%22 stroke=%22#12b8ff%22 stroke-width=%222.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@500&family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
@@ -276,6 +277,9 @@ h1{font:800 24px/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .tvchip{font:600 11px var(--body);color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}.gopen2{font:700 12px var(--body);color:var(--accent)}
 .lvn{background:var(--live);color:#fff;border-radius:99px;font:700 10px var(--body);padding:1px 6px;margin-left:2px}.cat.on .lvn{background:#04140b;color:var(--accent)}
 .hlrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}.hlth{flex:none;width:150px;border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:0;overflow:hidden;cursor:pointer;color:var(--ink);text-align:left}.hlth.on{border-color:var(--accent)}.hlth span{display:block;aspect-ratio:16/9;background:#000 center/cover;position:relative}.hlth i{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.75);color:#fff;font:600 10px var(--body);font-style:normal;padding:1px 5px;border-radius:4px}.hlth small{display:block;padding:6px 7px;font-size:11px;line-height:1.25;max-height:3.9em;overflow:hidden}
+header{padding-top:calc(12px + env(safe-area-inset-top))}#matchbox,#searchbox,#probox,#mgbox{padding-top:env(safe-area-inset-top)}
+@media(max-width:420px){.gteam .nm{max-width:38vw}.gside{min-width:84px}.mscore{font-size:36px}.ttt{grid-template-columns:62px repeat(3,1fr)}}
+html{-webkit-text-size-adjust:100%}button,a{-webkit-tap-highlight-color:transparent}
 </style>
 
 </head>
@@ -2278,5 +2282,6 @@ updChip();setInterval(()=>{try{RW.settle();}catch(e){}},30000);
 })();
 
 </script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
