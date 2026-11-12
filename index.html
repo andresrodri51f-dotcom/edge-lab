@@ -652,7 +652,8 @@ const BIGCLUB=/Real Madrid|Barcelona|Man(chester)? City|Liverpool|Arsenal|Man(ch
 const BIGNAT=/^(Argentina|Brazil|France|England|Spain|Germany|Portugal|Italy|Netherlands|Belgium|Croatia|United States|USA|Mexico|Uruguay|Colombia)$/i;
 function specialWhy(g){const [lg,st,a,h,,,,,,,x]=g,X=x||{};
  if(lg==='EuroLeague')return 'EuroLeague';
- if(['NBA','NFL','NHL','MLB'].includes(lg)&&X.natTV)return 'National TV · '+X.natTV;
+ const TVOK={NFL:/NBC|ESPN|ABC|Prime|Netflix|NFL Network/i,NBA:/ESPN|ABC|TNT|NBC|Peacock|Prime/i,NHL:/ESPN|ABC|TNT|truTV|Max/i,MLB:/FOX|FS1|ESPN|TBS|Apple|Netflix|NBC|Peacock/i};
+ if(TVOK[lg]&&X.natTV&&TVOK[lg].test(X.natTV))return (lg==='NFL'?'Prime time · ':'National TV · ')+X.natTV;
  if(lg==='Tennis'){if(/Finals|Australian Open|Roland|Wimbledon|US Open/i.test(X.tour||''))return X.tour;if(/Semifinal|^Final/i.test(g[6]||''))return 'Late round';return '';}
  if(CLUBS.includes(lg)){const ba=BIGCLUB.test(a),bh=BIGCLUB.test(h);if(ba&&bh)return 'Big clubs';if(lg==='UCL'&&(ba||bh))return 'Champions League · big club';return '';}
  if(INTL.includes(lg)){const na=BIGNAT.test(a),nh=BIGNAT.test(h);if(na&&nh)return 'Top nations';if((na||nh)&&lg!=='Friendlies')return 'Top nation';return '';}
