@@ -873,7 +873,10 @@ const FCACHE={};let lastFull=0,busy=false,lastOk=0,FEED_MS=5000,NETFAIL=0,NETBAD
 function rate(){return Date.now()-NETBAD<6e4?30000:5000;}
 const SOCD={};
 function ymd(d){return d.toISOString().slice(0,10).replace(/-/g,'');}
-async function getJSON(u){const es=/espn\.com/.test(u),bad=()=>{if(es&&++NETFAIL>=4)NETBAD=Date.now();};try{const r=await fetch(u,{cache:'no-store'});if(!r.ok){bad();return null;}if(es)NETFAIL=0;return await r.json();}catch(e){bad();return null;}}
+/* at most 8 ESPN requests at once: ESPN rejects big bursts, which is what used to blank the scores */
+let NQ=0;const NW=[];
+async function getJSON(u){const es=/espn\.com/.test(u),bad=()=>{if(es&&++NETFAIL>=6)NETBAD=Date.now();};if(es){if(NQ>=8)await new Promise(r=>NW.push(r));NQ++;}
+ try{const r=await fetch(u,{cache:'no-store'});if(!r.ok){if(r.status===403||r.status===429||r.status>=500)bad();return null;}if(es)NETFAIL=0;return await r.json();}catch(e){bad();return null;}finally{if(es){NQ--;const n=NW.shift();if(n)n();}}}
 async function fetchSoccer(lg,p,full){
  const S=SOCD[lg]||(SOCD[lg]={cal:[],days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
  const cur=await getJSON(base);
