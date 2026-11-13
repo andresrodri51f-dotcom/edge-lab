@@ -1332,8 +1332,8 @@ function bestPlays(ctx,R,lines){const out=[],pre=ctx.st==='up',D=new Map();for(c
    if(p<.56||!r||r.n<5||r.h/r.n<.6)continue;const io=impl(l.over),iu=impl(l.under),fair=io&&iu?io/(io+iu):io,bk=fair==null?null:(ov?fair:1-fair);if(bk==null||p-bk<.03||p-bk>.15)continue;{const od=ov?l.over:l.under;if(od!=null&&od<-190)continue;}
    out.push({k:l.id+'|'+l.key,id:l.id,name:o.p.name,pick:(ov?'Over ':'Under ')+l.L,lab:PJLAB[l.key]||l.key,p,r,bk,odds:ov?l.over:l.under,sc:(p-.5)+(r?(r.h/r.n-.5)*.5:0)+(bk!=null?Math.max(0,p-bk)*.5:0),book:1});}
  if(!out.length)for(const o of R.P){if(o.p.kind!=='nba')continue;for(const k of ['pts','reb','ast','tpm','pra']){const hh=o.h[k];if(!hh)continue;let m=0,t=0;for(let i=0;i<hh.length;i++){t+=hh[i];m+=i*hh[i];}m/=t||1;
-   const rg=ladder(hh,k,m).find(x=>x.lab==='Likely');if(!rg||rg.p>.9)continue;const r=l10(o.p.id,k,rg.T,false);if(!r||r.n<5||r.h/r.n<.7)continue;const done=(o.p.cur&&LOGV[k]?LOGV[k](o.p.cur):0)>=rg.T;if(done)continue;
-   out.push({k:o.p.id+'|'+k,id:o.p.id,name:o.p.name,pick:rg.T+'+',lab:PJLAB[k],p:rg.p,r,bk:null,sc:(rg.p-.5)+(r.h/r.n-.5)*.5});}}
+   if(m<5)continue;const rg=ladder(hh,k,m).find(x=>x.lab==='Likely');if(!rg||rg.p>.9)continue;const r=l10(o.p.id,k,rg.T,false);if(!r||r.n<5||r.h/r.n<.7)continue;const done=(o.p.cur&&LOGV[k]?LOGV[k](o.p.cur):0)>=rg.T;if(done)continue;
+   out.push({k:o.p.id+'|'+k,id:o.p.id,name:o.p.name,pick:rg.T+'+',lab:PJLAB[k],p:rg.p,r,bk:null,sc:(r.h/r.n-.5)+(rg.p-.5)*.3+Math.min(m,30)/300});}}
  out.sort((x,y)=>y.sc-x.sc);const per={},res=[];for(const x of out){per[x.id]=(per[x.id]||0)+1;if(per[x.id]>2)continue;res.push(x);if(res.length>=6)break;}return res;}
 function projCard(ctx,R){
  const rows=[],flat=[],lines=ctx.st==='up'?(window.CURLINES||[]):[],LM=new Map();for(const l of lines)if(l.kind==='ou')LM.set(String(l.id)+'|'+l.key,l);
