@@ -2805,6 +2805,28 @@ LU.predictData=async function(g,sum){const lg=g[0],X=g[10]||{};if(!X.path||!X.ai
   out.push(team);}
  const kind=SOCCER.includes(lg)?'soccer':lg==='MLB'?'mlb':lg==='NHL'?'nhl':'nba';
  const L={kind,teams:out,predicted:true,injN};PCACHE[ck]={t:Date.now(),L:JSON.parse(JSON.stringify(L))};return L;};
+/* ---------- NBA: expected / confirmed starters from the NBA's own lineup feed (a job in this repo copies it to the data branch every few minutes) ---------- */
+const NBAF={t:0,d:null},nrm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z ]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b/g,'').replace(/\s+/g,' ').trim();
+async function nbaFeed(){if(NBAF.d&&Date.now()-NBAF.t<6e4)return NBAF.d;const d=await getJSON('https://raw.githubusercontent.com/andresrodri51f-dotcom/edge-lab/data/nba-lineups.json?t='+Math.floor(Date.now()/6e4));NBAF.t=Date.now();if(d&&Array.isArray(d.games))NBAF.d=d;return NBAF.d;}
+LU.nbaFeed=async function(g,L){try{const X=g[10]||{};if(g[0]!=='NBA'||!L||L.kind!=='nba'||!L.predicted)return L;const F=await nbaFeed();if(!F)return L;
+ if(X.date&&F.date){const et=new Date(X.date).toLocaleDateString('en-CA',{timeZone:'America/New_York'}).replace(/-/g,'');if(et!==F.date)return L;}
+ const nm=p=>nrm(p.playerName||((p.firstName||'')+' '+(p.lastName||''))),FT=[];for(const gm of F.games)for(const k of ['awayTeam','homeTeam'])if(gm[k]&&Array.isArray(gm[k].players))FT.push(gm[k]);
+ const feed={};
+ for(const T of L.teams){const names=new Set([...(T.ps||[]),...(T.bench||[]),...(T.removed||[])].map(p=>nrm(p.n)));
+  let best=null,bs=0;for(const ft of FT){const sc=ft.players.filter(p=>names.has(nm(p))).length;if(sc>bs){bs=sc;best=ft;}}
+  if(!best||bs<4)continue;
+  const st=best.players.filter(p=>p.position&&/^(confirmed|expected)$/i.test(p.lineupStatus||'')&&!/inactive/i.test(p.rosterStatus||''));if(st.length!==5)continue;
+  let ros=null;const five=[];
+  for(const q of st){const k=nm(q);let p=(T.ps||[]).find(z=>nrm(z.n)===k)||(T.bench||[]).find(z=>nrm(z.n)===k);
+   if(!p){if(!ros){const r=await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${X.path}/teams/${T.tid}/roster`);ros=(r&&r.athletes)||[];}const a=ros.find(z=>nrm(z.displayName||z.fullName)===k);
+    if(a)p={id:a.id,n:a.displayName||a.fullName,j:a.jersey||'',pos:/G/.test(q.position)?'G':/F/.test(q.position)?'F':'C',hs:(a.headshot&&a.headshot.href)||'',st:{},subIn:false,subOut:false};}
+   if(!p)break;five.push(p);}
+  if(five.length!==5)continue;
+  const ids=new Set(five.map(p=>String(p.id))),out=new Set(best.players.filter(p=>/inactive/i.test(p.rosterStatus||'')).map(nm));
+  T.bench=[...(T.ps||[]),...(T.bench||[])].filter(p=>!ids.has(String(p.id))&&!out.has(nrm(p.n)));T.ps=five;
+  feed[T.side]=st.every(p=>/^confirmed$/i.test(p.lineupStatus))?'Confirmed':'Expected';}
+ if(Object.keys(feed).length)L.feed=feed;}catch(e){}return L;};
+{const pd0=LU.predictData;LU.predictData=async function(g,sum){const L=await pd0(g,sum);return g[0]==='NBA'?LU.nbaFeed(g,L):L;};}
 LU.official=function(g,sum){try{return getLineup(g,sum);}catch(e){return null;}};
 LU.renderL=function(g,L){CUR={g,L};return `<div class="card msec" id="lucard">${luBody()}</div>`;};
 LU.predict=async function(g,sum){const L=await LU.predictData(g,sum);if(!L||!MATCH||gameKey(MATCH.g)!==gameKey(g))return '';return LU.renderL(g,L);};
@@ -2815,7 +2837,7 @@ LU.reg=(p,side)=>{REG.push({...p,side});return REG.length-1;};
 LU.html=function(g,sum){let L=null;try{L=getLineup(g,sum);}catch(e){L=null;}CUR=L?{g,L}:null;if(!L)return '';
  const live=g[1]!=='up';return `<div class="card msec" id="lucard">${luBody()}</div>`;};
 function luBody(){if(!CUR)return '';const {g,L}=CUR;REG=[];const A=L.teams.find(t=>t.side==='a')||L.teams[0],H=L.teams.find(t=>t.side==='h')||L.teams[1];
- const title=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="ptitle" style="margin:0">Lineups</h2>${L.predicted?'<span class="lu-badge pred">Predicted</span>':'<span class="lu-badge ok">Official</span>'}</div><div class="hint" style="margin:4px 0 10px">${L.predicted?'Not announced yet. Based on each team’s last game'+(L.injN?`, without ${L.injN} injured player${L.injN>1?'s':''}`:'')+'.':L.kind==='nhl'?'Dressed players from the official game sheet':L.kind==='nba'?'Starting five':g[1]==='up'?'Confirmed starting lineups':'Starting lineups'} · tap a player for their props</div>`;
+ const title=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="ptitle" style="margin:0">Lineups</h2>${L.feed?(L.feed.a==='Confirmed'&&L.feed.h==='Confirmed'?'<span class="lu-badge ok">Confirmed</span>':'<span class="lu-badge pred">Expected</span>'):L.predicted?'<span class="lu-badge pred">Predicted</span>':'<span class="lu-badge ok">Official</span>'}</div><div class="hint" style="margin:4px 0 10px">${L.feed?'Starting five from the NBA’s lineup feed. '+[A,H].map(t=>esc(t.name)+': '+(L.feed[t.side]==='Confirmed'?'confirmed by the team':L.feed[t.side]==='Expected'?'expected, not confirmed yet':'predicted from the last game')).join(' · ')+'.':L.predicted?'Not announced yet. Based on each team’s last game'+(L.injN?`, without ${L.injN} injured player${L.injN>1?'s':''}`:'')+'.':L.kind==='nhl'?'Dressed players from the official game sheet':L.kind==='nba'?'Starting five':g[1]==='up'?'Confirmed starting lineups':'Starting lineups'} · tap a player for their props</div>`;
  const sw=t=>`<div class="lu-sw">${[A,H].map(x=>`<button class="${x.side===t.side?'on':''}" onclick="LU.team('${x.side}')">${x.logo?`<img src="${esc(x.logo)}" alt="">`:''}${esc(x.name)}</button>`).join('')}</div>`;
  if(L.kind==='soccer')return soccerView(g,L,A,H,title);
  const T=L.teams.find(t=>t.side===TEAM)||A;
