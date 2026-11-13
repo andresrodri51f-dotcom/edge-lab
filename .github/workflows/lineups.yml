@@ -1,0 +1,42 @@
+# Copies the NBA's daily lineup feed (expected / confirmed starters) into the "data" branch
+# every few minutes, so the Edge Lab site can read it. Browsers can't load the NBA feed directly.
+name: NBA lineups
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lineups.yml']
+permissions:
+  contents: write
+concurrency:
+  group: nba-lineups
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Fetch feed and publish
+        run: |
+          set -euo pipefail
+          D=$(TZ=America/New_York date +%Y%m%d)
+          curl -fsS --compressed --max-time 25 --retry 2 \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" \
+            -H "Referer: https://www.nba.com/" -H "Origin: https://www.nba.com" -H "Accept: application/json, text/plain, */*" \
+            "https://stats.nba.com/js/data/leaders/00_daily_lineups_${D}.json" -o raw.json
+          jq -e '.games|type=="array"' raw.json >/dev/null
+          jq -c --arg d "$D" '{date:$d,games:.games}' raw.json > nba-lineups.json
+          URL="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          if git clone -q --depth 1 --branch data "$URL" old 2>/dev/null && cmp -s old/nba-lineups.json nba-lineups.json; then
+            echo "No change"; exit 0
+          fi
+          mkdir out && cp nba-lineups.json out/ && cd out
+          git init -q && git checkout -q --orphan data
+          git add nba-lineups.json
+          git -c user.name="edge-lab-bot" -c user.email="edge-lab-bot@users.noreply.github.com" commit -q -m "NBA lineups ${D}"
+          git push -q -f "$URL" data
