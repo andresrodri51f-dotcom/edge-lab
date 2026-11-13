@@ -875,16 +875,14 @@ const SOCD={};
 function ymd(d){return d.toISOString().slice(0,10).replace(/-/g,'');}
 /* at most 8 ESPN requests at once: ESPN rejects big bursts, which is what used to blank the scores */
 let NQ=0;const NW=[];
-async function getJSON(u){const es=/espn\.com/.test(u),bad=()=>{if(es&&++NETFAIL>=6)NETBAD=Date.now();};if(es){if(NQ>=8)await new Promise(r=>NW.push(r));NQ++;}
+async function getJSON(u){const es=/espn\.com/.test(u),bad=()=>{if(es&&++NETFAIL>=6)NETBAD=Date.now();};if(es&&Date.now()-NETBAD<2e4)return null;if(es){if(NQ>=8)await new Promise(r=>NW.push(r));NQ++;}
  try{const r=await fetch(u,{cache:'no-store'});if(!r.ok){if(r.status===403||r.status===429||r.status>=500)bad();return null;}if(es)NETFAIL=0;return await r.json();}catch(e){bad();return null;}finally{if(es){NQ--;const n=NW.shift();if(n)n();}}}
 async function fetchSoccer(lg,p,full){
  const S=SOCD[lg]||(SOCD[lg]={cal:[],days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
  const cur=await getJSON(base);
  if(cur){S.cur=cur;const c=cur.leagues&&cur.leagues[0]&&cur.leagues[0].calendar;if(Array.isArray(c)&&c.length&&typeof c[0]==='string')S.cal=c;}
- if(full){const now=Date.now(),lo=now-7*864e5,hi=now+15*864e5,today=ymd(new Date());
-  let want=S.cal.map(x=>new Date(x)).filter(d=>d>=lo&&d<=hi).map(ymd);
-  if(!S.cal.length){want=[];for(let t=lo;t<=hi;t+=864e5)want.push(ymd(new Date(t)));}
-  await Promise.all(want.map(async k=>{const old=S.days[k];if(old&&(k<today||now-old.t<6e5))return;const d=await getJSON(base+'?dates='+k);if(d)S.days[k]={t:now,events:d.events||[]};}));}
+ if(full){/* one request for the whole window (a week back, 15 days ahead) instead of one per day */const now=Date.now(),old=S.days.rng;
+  if(!old||now-old.t>6e5){const d=await getJSON(base+'?dates='+ymd(new Date(now-7*864e5))+'-'+ymd(new Date(now+15*864e5))+'&limit=300');if(d)S.days={rng:{t:now,events:d.events||[]}};}}
  const m=new Map();for(const k of Object.keys(S.days).sort())for(const e of S.days[k].events)m.set(e.id,e);
  if(S.cur)for(const e of S.cur.events||[])m.set(e.id,e);
  if(m.size||cur)FCACHE[lg]={events:[...m.values()]};
@@ -894,8 +892,8 @@ async function fetchAhead(lg,p,full){
  const S=SOCD[lg]||(SOCD[lg]={days:{},cur:null}),base=`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`;
  const cur=await getJSON(base);if(cur)S.cur=cur;
  if(lg==='NBA'||lg==='NHL'||lg==='MLB'){const now=Date.now(),tk=ymdL(new Date(now));const x0=await getJSON(base+'?dates='+tk);if(x0)S.days[tk]={t:now,events:x0.events||[]};
-  if(full)await Promise.all([-1,1,2,3].map(async d=>{const k=ymdL(new Date(now+d*864e5));const old=S.days[k];if(old&&now-old.t<6e5)return;const x=await getJSON(base+'?dates='+k);if(x)S.days[k]={t:now,events:x.events||[]};}));}
- const m=new Map();for(const k of Object.keys(S.days))for(const e of S.days[k].events)m.set(e.id,e);const tk0=ymdL(new Date());if(S.cur)for(const e of S.cur.events||[])if(!m.has(e.id)||!(S.days[tk0]&&S.days[tk0].events.some(x=>x.id===e.id)))m.set(e.id,e);
+  if(full){const old=S.days.rng;if(!old||now-old.t>6e5){const x=await getJSON(base+'?dates='+ymdL(new Date(now-864e5))+'-'+ymdL(new Date(now+3*864e5))+'&limit=300');if(x)S.days.rng={t:now,events:x.events||[]};}}}
+ const m=new Map();for(const k of Object.keys(S.days).sort((a,b)=>(b==='rng')-(a==='rng')))for(const e of S.days[k].events)m.set(e.id,e);const tk0=ymdL(new Date());if(S.cur)for(const e of S.cur.events||[])if(!m.has(e.id)||!(S.days[tk0]&&S.days[tk0].events.some(x=>x.id===e.id)))m.set(e.id,e);
  if(m.size)FCACHE[lg]={events:[...m.values()]};
 }
 async function fetchLeague(lg,p){try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/${p}/scoreboard`,{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(d&&d.events)FCACHE[lg]=d;}catch(e){}}
@@ -1568,7 +1566,7 @@ let TEN={days:{},cur:{}};
 async function fetchTennis(full){
  const now=Date.now();const rk=Promise.resolve().then(()=>tenRanks());
  for(const tour of ['atp','wta']){const base=`https://site.api.espn.com/apis/site/v2/sports/tennis/${tour}/scoreboard`;const d=await getJSON(base);if(d){d._tour=tour;TEN.cur[tour]=d;}
-  if(full)await Promise.all([-2,-1,0,1,2,3].map(async k=>{const key=tour+ymdL(new Date(now+k*864e5));const old=TEN.days[key];if(old&&now-old.t<(k<0?36e5:6e5))return;const x=await getJSON(base+'?dates='+ymdL(new Date(now+k*864e5)));if(x){x._tour=tour;TEN.days[key]={t:now,d:x};}}));}
+  if(full){const key=tour+'rng',old=TEN.days[key];if(!old||now-old.t>6e5){const x=await getJSON(base+'?dates='+ymdL(new Date(now-2*864e5))+'-'+ymdL(new Date(now+3*864e5)));if(x){x._tour=tour;TEN.days[key]={t:now,d:x};}}}}
  await rk;
 }
 function tennisList(){
